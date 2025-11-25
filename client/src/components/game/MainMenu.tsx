@@ -19,7 +19,7 @@ export function MainMenu() {
             letterSpacing: "4px"
           }}
         >
-          UNDERTALE
+          ZETATRAVELER
         </h1>
         <h2 
           className="text-2xl text-gray-400 mb-16"
@@ -64,7 +64,7 @@ export function MainMenu() {
         className="absolute bottom-8 text-gray-600 text-xs"
         style={{ fontFamily: "'Courier New', monospace" }}
       >
-        Inspired by UNDERTALE by Toby Fox
+        A journey through dimensions awaits...
       </p>
     </div>
   );
