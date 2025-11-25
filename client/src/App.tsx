@@ -1,16 +1,19 @@
 import { useRPG } from "./lib/stores/useRPG";
 import { MainMenu } from "./components/game/MainMenu";
 import { VesselCreator } from "./components/game/VesselCreator";
+import { Hub } from "./components/game/Hub";
+import { Planet } from "./components/game/Planet";
+import { Battle } from "./components/game/Battle";
 import "@fontsource/inter";
 
 function App() {
   const gamePhase = useRPG((state) => state.gamePhase);
   const setGamePhase = useRPG((state) => state.setGamePhase);
-  const setPlayerName = useRPG((state) => state.setPlayerName);
+  const setVesselName = useRPG((state) => state.setVesselName);
 
   const handleVesselComplete = (name: string) => {
-    setPlayerName(name);
-    setGamePhase("menu");
+    setVesselName(name);
+    setGamePhase("hub");
   };
 
   return (
@@ -21,21 +24,11 @@ function App() {
 
       {gamePhase === "menu" && <MainMenu />}
       
-      {gamePhase === "overworld" && (
-        <div className="w-full h-full bg-black flex items-center justify-center">
-          <p className="text-white text-2xl" style={{ fontFamily: "'Courier New', monospace" }}>
-            Overworld coming soon...
-          </p>
-        </div>
-      )}
+      {gamePhase === "hub" && <Hub />}
       
-      {gamePhase === "battle" && (
-        <div className="w-full h-full bg-black flex items-center justify-center">
-          <p className="text-white text-2xl" style={{ fontFamily: "'Courier New', monospace" }}>
-            Battle coming soon...
-          </p>
-        </div>
-      )}
+      {gamePhase === "planet" && <Planet />}
+      
+      {gamePhase === "battle" && <Battle />}
     </div>
   );
 }
