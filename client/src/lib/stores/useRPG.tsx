@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type GamePhase = "intro" | "naming" | "menu" | "overworld" | "battle";
+export type GamePhase = "vessel" | "menu" | "overworld" | "battle";
 
 interface RPGState {
   gamePhase: GamePhase;
@@ -10,7 +10,7 @@ interface RPGState {
 }
 
 export const useRPG = create<RPGState>((set) => ({
-  gamePhase: "intro",
+  gamePhase: "vessel",
   playerName: "",
   setGamePhase: (phase) => set({ gamePhase: phase }),
   setPlayerName: (name) => set({ playerName: name }),

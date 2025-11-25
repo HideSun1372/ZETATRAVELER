@@ -1,7 +1,6 @@
 import { useRPG } from "./lib/stores/useRPG";
 import { MainMenu } from "./components/game/MainMenu";
-import { Intro } from "./components/game/Intro";
-import { NameInput } from "./components/game/NameInput";
+import { VesselCreator } from "./components/game/VesselCreator";
 import "@fontsource/inter";
 
 function App() {
@@ -9,19 +8,15 @@ function App() {
   const setGamePhase = useRPG((state) => state.setGamePhase);
   const setPlayerName = useRPG((state) => state.setPlayerName);
 
-  const handleNameComplete = (name: string) => {
+  const handleVesselComplete = (name: string) => {
     setPlayerName(name);
     setGamePhase("menu");
   };
 
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative', overflow: 'hidden' }}>
-      {gamePhase === "intro" && (
-        <Intro onComplete={() => setGamePhase("naming")} />
-      )}
-
-      {gamePhase === "naming" && (
-        <NameInput onComplete={handleNameComplete} />
+      {gamePhase === "vessel" && (
+        <VesselCreator onComplete={handleVesselComplete} />
       )}
 
       {gamePhase === "menu" && <MainMenu />}
