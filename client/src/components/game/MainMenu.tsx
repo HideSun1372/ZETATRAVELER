@@ -55,7 +55,7 @@ export function MainMenu() {
             className="text-gray-500 text-sm"
             style={{ fontFamily: "'Courier New', monospace" }}
           >
-            X or Backspace to cancel
+            X or Shift to cancel
           </p>
         </div>
       </div>
