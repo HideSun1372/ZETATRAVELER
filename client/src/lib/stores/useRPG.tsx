@@ -76,6 +76,8 @@ interface RPGState {
   battleTurn: "player" | "enemy";
   battlePhase: "menu" | "fight" | "act" | "item" | "defend" | "mercy" | "enemy_attack" | "victory" | "defeat";
   
+  defeatedEnemyIds: string[];
+  
   saveSlots: { slot: number; data: string | null; timestamp: string | null }[];
   
   setGamePhase: (phase: GamePhase) => void;
@@ -179,6 +181,8 @@ export const useRPG = create<RPGState>((set, get) => ({
   currentEnemy: null,
   battleTurn: "player",
   battlePhase: "menu",
+  
+  defeatedEnemyIds: [],
   
   saveSlots: [
     { slot: 1, data: null, timestamp: null },
@@ -301,20 +305,24 @@ export const useRPG = create<RPGState>((set, get) => ({
   
   endBattle: (outcome) => {
     const state = get();
+    const enemyId = state.currentEnemy?.id;
+    
     if (outcome === "victory" && state.currentEnemy) {
       const xpGain = 5 + state.currentEnemy.maxHp;
       get().gainXP(xpGain);
       set({
         totalKills: state.totalKills + 1,
+        defeatedEnemyIds: enemyId ? [...state.defeatedEnemyIds, enemyId] : state.defeatedEnemyIds,
         planets: state.planets.map((p) =>
           p.id === state.currentPlanetId
             ? { ...p, enemiesKilled: p.enemiesKilled + 1 }
             : p
         ),
       });
-    } else if (outcome === "spare") {
+    } else if (outcome === "spare" && state.currentEnemy) {
       set({
         totalSpares: state.totalSpares + 1,
+        defeatedEnemyIds: enemyId ? [...state.defeatedEnemyIds, enemyId] : state.defeatedEnemyIds,
         planets: state.planets.map((p) =>
           p.id === state.currentPlanetId
             ? { ...p, enemiesSpared: p.enemiesSpared + 1 }

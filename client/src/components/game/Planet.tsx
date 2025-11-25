@@ -43,6 +43,7 @@ export function Planet() {
     maxHp,
     level,
     nebuliShards,
+    defeatedEnemyIds,
   } = useRPG();
 
   const currentPlanet = planets.find((p) => p.id === currentPlanetId);
@@ -132,7 +133,8 @@ export function Planet() {
     }
 
     for (const enemy of enemies) {
-      if (!enemy.defeated && Math.abs(tileX - enemy.x) < 1 && Math.abs(tileY - enemy.y) < 1) {
+      const isDefeated = defeatedEnemyIds.includes(enemy.id);
+      if (!isDefeated && Math.abs(tileX - enemy.x) < 1 && Math.abs(tileY - enemy.y) < 1) {
         const battleEnemy: Enemy = {
           id: enemy.id,
           name: enemy.name,
@@ -288,8 +290,9 @@ export function Planet() {
           ) : null
         )}
 
-        {enemies.map((enemy) =>
-          !enemy.defeated ? (
+        {enemies.map((enemy) => {
+          const isDefeated = defeatedEnemyIds.includes(enemy.id);
+          return !isDefeated ? (
             <div
               key={enemy.id}
               className="absolute flex items-center justify-center"
@@ -303,8 +306,8 @@ export function Planet() {
             >
               <span className="text-xs text-white font-bold">!</span>
             </div>
-          ) : null
-        )}
+          ) : null;
+        })}
 
         <div
           className="absolute"
@@ -358,7 +361,7 @@ export function Planet() {
         </div>
         <div>
           <span className="text-red-400">ENEMIES:</span>{" "}
-          {enemies.filter((e) => e.defeated).length}/{enemies.length}
+          {enemies.filter((e) => defeatedEnemyIds.includes(e.id)).length}/{enemies.length}
         </div>
       </div>
 
