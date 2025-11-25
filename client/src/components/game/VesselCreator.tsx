@@ -173,9 +173,12 @@ export function VesselCreator({ onComplete }: VesselCreatorProps) {
   };
 
   return (
-    <div className="w-full h-full bg-black flex flex-col items-center justify-center select-none">
-      <div className="text-center max-w-xl px-4">
-        <div style={{ minHeight: "120px" }}>
+    <div className="w-full h-full bg-black select-none relative">
+      <div 
+        className="absolute left-1/2 text-center max-w-xl px-4"
+        style={{ top: "35%", transform: "translateX(-50%)" }}
+      >
+        <div style={{ minHeight: "80px" }}>
           {currentStep.type === "summary" ? (
             <div
               className="text-xl text-white whitespace-pre-line leading-relaxed"
