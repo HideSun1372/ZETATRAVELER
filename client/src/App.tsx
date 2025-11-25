@@ -1,12 +1,18 @@
 import { useRPG } from "./lib/stores/useRPG";
 import { MainMenu } from "./components/game/MainMenu";
+import { Intro } from "./components/game/Intro";
 import "@fontsource/inter";
 
 function App() {
   const gamePhase = useRPG((state) => state.gamePhase);
+  const setGamePhase = useRPG((state) => state.setGamePhase);
 
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative', overflow: 'hidden' }}>
+      {gamePhase === "intro" && (
+        <Intro onComplete={() => setGamePhase("menu")} />
+      )}
+
       {gamePhase === "menu" && <MainMenu />}
       
       {gamePhase === "overworld" && (
