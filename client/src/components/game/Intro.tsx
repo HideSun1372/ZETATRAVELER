@@ -6,7 +6,7 @@ interface IntroProps {
 
 interface StoryLine {
   text: string;
-  important: boolean;
+  important: boolean | "slowest";
 }
 
 const storyLines: StoryLine[] = [
@@ -26,7 +26,7 @@ const storyLines: StoryLine[] = [
   { text: "", important: false },
   { text: "You are the last of them.", important: true },
   { text: "", important: false },
-  { text: "You are... a ZETATRAVELER.", important: true },
+  { text: "You are... a ZETATRAVELER.", important: "slowest" },
 ];
 
 export function Intro({ onComplete }: IntroProps) {
@@ -36,7 +36,8 @@ export function Intro({ onComplete }: IntroProps) {
   const [canAdvance, setCanAdvance] = useState(true);
 
   const currentStoryLine = storyLines[currentLine];
-  const isImportant = currentStoryLine.important;
+  const isImportant = currentStoryLine.important !== false;
+  const isSlowest = currentStoryLine.important === "slowest";
 
   const advanceText = useCallback(() => {
     if (!canAdvance) return;
@@ -60,7 +61,7 @@ export function Intro({ onComplete }: IntroProps) {
     if (!isTyping) return;
 
     const line = currentStoryLine.text;
-    const typeSpeed = isImportant ? 120 : 50;
+    const typeSpeed = isSlowest ? 200 : isImportant ? 100 : 50;
     
     if (displayedText.length < line.length) {
       if (isImportant) {
@@ -73,13 +74,12 @@ export function Intro({ onComplete }: IntroProps) {
     } else {
       setIsTyping(false);
       if (isImportant) {
-        const unlockTimer = setTimeout(() => {
+        setTimeout(() => {
           setCanAdvance(true);
-        }, 1000);
-        return () => clearTimeout(unlockTimer);
+        }, 800);
       }
     }
-  }, [displayedText, currentLine, isTyping, isImportant, currentStoryLine.text]);
+  }, [displayedText, currentLine, isTyping, isImportant, isSlowest, currentStoryLine.text]);
 
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
@@ -96,9 +96,7 @@ export function Intro({ onComplete }: IntroProps) {
   }, [advanceText, onComplete, isImportant]);
 
   const handleClick = () => {
-    if (!isImportant || !isTyping) {
-      advanceText();
-    }
+    advanceText();
   };
 
   return (
