@@ -1,16 +1,27 @@
 import { useRPG } from "./lib/stores/useRPG";
 import { MainMenu } from "./components/game/MainMenu";
 import { Intro } from "./components/game/Intro";
+import { NameInput } from "./components/game/NameInput";
 import "@fontsource/inter";
 
 function App() {
   const gamePhase = useRPG((state) => state.gamePhase);
   const setGamePhase = useRPG((state) => state.setGamePhase);
+  const setPlayerName = useRPG((state) => state.setPlayerName);
+
+  const handleNameComplete = (name: string) => {
+    setPlayerName(name);
+    setGamePhase("menu");
+  };
 
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative', overflow: 'hidden' }}>
       {gamePhase === "intro" && (
-        <Intro onComplete={() => setGamePhase("menu")} />
+        <Intro onComplete={() => setGamePhase("naming")} />
+      )}
+
+      {gamePhase === "naming" && (
+        <NameInput onComplete={handleNameComplete} />
       )}
 
       {gamePhase === "menu" && <MainMenu />}
