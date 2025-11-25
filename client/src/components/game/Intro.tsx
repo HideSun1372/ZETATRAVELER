@@ -26,7 +26,8 @@ const storyLines: StoryLine[] = [
   { text: "", important: false },
   { text: "You are the last of them.", important: true },
   { text: "", important: false },
-  { text: "You are... a ZETATRAVELER.", important: "slowest" },
+  { text: "You are... a", important: true },
+  { text: "ZETATRAVELER.", important: "slowest" },
 ];
 
 export function Intro({ onComplete }: IntroProps) {
