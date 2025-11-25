@@ -72,7 +72,7 @@ export function VesselCreator({ onComplete }: VesselCreatorProps) {
     if (displayedText.length < currentText.length) {
       const timer = setTimeout(() => {
         setDisplayedText(currentText.slice(0, displayedText.length + 1));
-      }, 60);
+      }, 120);
       return () => clearTimeout(timer);
     } else {
       setIsTyping(false);
