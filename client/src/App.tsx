@@ -5,6 +5,7 @@ import { VesselCreator } from "./components/game/VesselCreator";
 import { Hub } from "./components/game/Hub";
 import { Planet } from "./components/game/Planet";
 import { Battle } from "./components/game/Battle";
+import { GameOver } from "./components/game/GameOver";
 import "@fontsource/inter";
 
 const SKIP_VESSEL_CREATION = true;
@@ -39,6 +40,8 @@ function App() {
       {gamePhase === "planet" && <Planet />}
       
       {gamePhase === "battle" && <Battle />}
+      
+      {gamePhase === "gameover" && <GameOver />}
     </div>
   );
 }

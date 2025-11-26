@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type GamePhase = "vessel" | "menu" | "hub" | "planet" | "battle";
+export type GamePhase = "vessel" | "menu" | "hub" | "planet" | "battle" | "gameover";
 export type Route = "pacifist" | "neutral" | "genocide";
 
 export interface Enemy {
@@ -306,6 +306,15 @@ export const useRPG = create<RPGState>((set, get) => ({
   endBattle: (outcome) => {
     const state = get();
     const enemyId = state.currentEnemy?.id;
+    
+    if (outcome === "defeat") {
+      set({
+        gamePhase: "gameover",
+        currentEnemy: null,
+        battlePhase: "menu",
+      });
+      return;
+    }
     
     if (outcome === "victory" && state.currentEnemy) {
       const xpGain = 5 + state.currentEnemy.maxHp;

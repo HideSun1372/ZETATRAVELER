@@ -30,6 +30,7 @@ export function Hub() {
     recruitTraveler,
     lakineDialogueIndex,
     advanceLakineDialogue,
+    heal,
   } = useRPG();
 
   const [showDialogue, setShowDialogue] = useState(false);
@@ -62,8 +63,8 @@ export function Hub() {
     {
       id: "zara",
       name: "ZARA",
-      x: 7,
-      y: 10,
+      x: 5,
+      y: 7,
       color: "#FF69B4",
       dialogue: [
         "Hey there! I'm ZARA.",
@@ -76,8 +77,8 @@ export function Hub() {
     {
       id: "korin",
       name: "KORIN",
-      x: 13,
-      y: 10,
+      x: 15,
+      y: 7,
       color: "#4169E1",
       dialogue: [
         "...",
@@ -91,7 +92,7 @@ export function Hub() {
       id: "mira",
       name: "MIRA",
       x: 10,
-      y: 5,
+      y: 10,
       color: "#32CD32",
       dialogue: [
         "Oh! A visitor!",
@@ -99,6 +100,17 @@ export function Hub() {
         "I can fix anything... well, almost anything.",
         "The ship's portal is ready when you are!",
         "* MIRA joined your party! *",
+      ],
+    },
+    {
+      id: "healer",
+      name: "HEALING STATION",
+      x: 2,
+      y: 7,
+      color: "#00FF88",
+      dialogue: [
+        "* You rest at the healing station... *",
+        "* HP fully restored! *",
       ],
     },
   ], []);
@@ -206,6 +218,9 @@ export function Hub() {
       }
       if (currentNPC?.id === "lakine") {
         advanceLakineDialogue();
+      }
+      if (currentNPC?.id === "healer") {
+        heal(maxHp);
       }
       setShowDialogue(false);
       setCurrentNPC(null);
