@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import { useRPG, Enemy } from "../../lib/stores/useRPG";
+import { getPlanetById, PlanetTheme } from "../../lib/data/planets";
 
 interface Shard {
   id: number;
@@ -17,18 +18,14 @@ interface EnemySpawn {
   atk: number;
   def: number;
   defeated: boolean;
+  color: string;
+  spareDialogue: string[];
 }
 
 const TILE_SIZE = 32;
 const MAP_WIDTH = 25;
 const MAP_HEIGHT = 18;
 const PLAYER_SPEED = 4;
-
-const ENEMY_TYPES = [
-  { name: "STARLING", hp: 15, atk: 5, def: 2, color: "#FF6B6B" },
-  { name: "VOIDLING", hp: 20, atk: 8, def: 3, color: "#9B59B6" },
-  { name: "NEBULITE", hp: 25, atk: 10, def: 5, color: "#3498DB" },
-];
 
 export function Planet() {
   const {
@@ -48,6 +45,7 @@ export function Planet() {
   } = useRPG();
 
   const currentPlanet = planets.find((p) => p.id === currentPlanetId);
+  const planetTheme = getPlanetById(currentPlanetId);
   
   const [shards, setShards] = useState<Shard[]>([]);
   const [enemies, setEnemies] = useState<EnemySpawn[]>([]);
@@ -92,8 +90,9 @@ export function Planet() {
       return x - Math.floor(x);
     };
 
+    const shardCount = currentPlanet?.totalShards || 2;
     const newShards: Shard[] = [];
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < shardCount; i++) {
       newShards.push({
         id: i,
         x: Math.floor(random(i * 2) * (MAP_WIDTH - 4)) + 2,
@@ -104,23 +103,28 @@ export function Planet() {
     setShards(newShards);
 
     const newEnemies: EnemySpawn[] = [];
+    const planetEnemies = planetTheme?.enemies || [];
     for (let i = 0; i < 3; i++) {
-      const enemyType = ENEMY_TYPES[i % ENEMY_TYPES.length];
-      newEnemies.push({
-        id: `enemy-${currentPlanetId}-${i}`,
-        name: enemyType.name,
-        x: Math.floor(random(i * 3 + 100) * (MAP_WIDTH - 4)) + 2,
-        y: Math.floor(random(i * 3 + 101) * (MAP_HEIGHT - 4)) + 2,
-        hp: enemyType.hp,
-        atk: enemyType.atk,
-        def: enemyType.def,
-        defeated: false,
-      });
+      const enemyData = planetEnemies[i % planetEnemies.length];
+      if (enemyData) {
+        newEnemies.push({
+          id: `enemy-${currentPlanetId}-${i}`,
+          name: enemyData.name,
+          x: Math.floor(random(i * 3 + 100) * (MAP_WIDTH - 4)) + 2,
+          y: Math.floor(random(i * 3 + 101) * (MAP_HEIGHT - 4)) + 2,
+          hp: enemyData.hp,
+          atk: enemyData.atk,
+          def: enemyData.def,
+          defeated: false,
+          color: enemyData.color,
+          spareDialogue: enemyData.spareDialogue,
+        });
+      }
     }
     setEnemies(newEnemies);
 
     setPlayerPosition({ x: 2 * TILE_SIZE, y: (MAP_HEIGHT / 2) * TILE_SIZE });
-  }, [currentPlanetId]);
+  }, [currentPlanetId, planetTheme]);
 
   const checkCollision = (x: number, y: number): boolean => {
     const tileX = Math.floor(x / TILE_SIZE);
@@ -271,25 +275,40 @@ export function Planet() {
   }, [playerPosition, showExitPrompt]);
 
   const getPlanetColor = () => {
-    const colors = ["#1a472a", "#2d1b4e", "#4a1c1c", "#1c3d4a", "#3d3d1c"];
-    return colors[(currentPlanetId - 1) % colors.length];
+    return planetTheme?.groundColor || "#1a1a2e";
+  };
+  
+  const getWallColor = () => {
+    return planetTheme?.secondaryColor || "#333366";
   };
 
   return (
     <div className="w-full h-full bg-black flex flex-col items-center justify-center select-none">
-      <div
-        className="text-white text-xl mb-2"
-        style={{ fontFamily: "'Courier New', monospace" }}
-      >
-        PLANET {currentPlanetId}: {currentPlanet?.name || "UNKNOWN"}
+      <div className="text-center mb-2">
+        <div
+          className="text-xl"
+          style={{ 
+            fontFamily: "'Courier New', monospace",
+            color: planetTheme?.primaryColor || "#FFFFFF"
+          }}
+        >
+          {currentPlanet?.name || "UNKNOWN"}
+        </div>
+        <div
+          className="text-sm text-gray-400"
+          style={{ fontFamily: "'Courier New', monospace" }}
+        >
+          {planetTheme?.biome || "Unknown Biome"} | Difficulty: {"★".repeat(planetTheme?.difficulty || 1)}
+        </div>
       </div>
 
       <div
-        className="relative border-4 border-white"
+        className="relative border-4"
         style={{
           width: MAP_WIDTH * TILE_SIZE,
           height: MAP_HEIGHT * TILE_SIZE,
           backgroundColor: getPlanetColor(),
+          borderColor: planetTheme?.primaryColor || "#FFFFFF",
         }}
       >
         {walls.map((wall, i) => (
@@ -301,7 +320,8 @@ export function Planet() {
               top: wall.y * TILE_SIZE,
               width: TILE_SIZE,
               height: TILE_SIZE,
-              backgroundColor: "#222",
+              backgroundColor: getWallColor(),
+              border: `1px solid ${planetTheme?.primaryColor || "#444"}`,
             }}
           />
         ))}
@@ -347,7 +367,8 @@ export function Planet() {
                 top: enemy.y * TILE_SIZE,
                 width: TILE_SIZE,
                 height: TILE_SIZE,
-                backgroundColor: ENEMY_TYPES.find((e) => e.name === enemy.name)?.color || "#FF0000",
+                backgroundColor: enemy.color || "#FF0000",
+                boxShadow: `0 0 8px ${enemy.color || "#FF0000"}`,
               }}
             >
               <span className="text-xs text-white font-bold">!</span>
