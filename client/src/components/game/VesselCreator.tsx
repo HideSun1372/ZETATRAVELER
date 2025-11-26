@@ -211,6 +211,12 @@ export function VesselCreator({ onComplete }: VesselCreatorProps) {
                 <span className="animate-pulse">_</span>
               </p>
             </div>
+            <p
+              className="text-gray-500 text-sm mt-4"
+              style={{ fontFamily: "'Courier New', monospace" }}
+            >
+              [Type a name, then press Enter]
+            </p>
           </div>
         )}
 
@@ -234,15 +240,21 @@ export function VesselCreator({ onComplete }: VesselCreatorProps) {
                 {option}
               </div>
             ))}
+            <p
+              className="text-gray-500 text-sm mt-4"
+              style={{ fontFamily: "'Courier New', monospace" }}
+            >
+              [W/S or Arrows to select, Z/Enter to confirm]
+            </p>
           </div>
         )}
 
         {canProceed && currentStep.type === "dialogue" && (
           <p
-            className="text-gray-600 text-sm mt-12 animate-pulse"
+            className="text-gray-400 text-sm mt-12 animate-pulse"
             style={{ fontFamily: "'Courier New', monospace" }}
           >
-            ...
+            [Press Z or Enter to continue]
           </p>
         )}
       </div>
