@@ -35,7 +35,15 @@ Preferred communication style: Simple, everyday language.
 - `menu`: Main menu navigation
 - `hub`: Central hub for NPC interaction and planet travel
 - `planet`: 2D top-down exploration with enemy encounters
-- `battle`: 3D bullet-hell combat system
+- `battle`: 2D bullet-hell combat system
+
+**Planet System**:
+- 50 unique planets across 5 regions (Verdant Cluster, Frozen Expanse, Inferno Sector, Void Realm, Celestial Heights)
+- Each planet has unique biome, color theme, and 3 distinct enemy types
+- Planet data stored in `client/src/lib/data/planets.ts`
+- Galaxy Map component (`GalaxyMap.tsx`) for browsing and selecting planets
+- Difficulty scaling from 1-5 stars across regions
+- 150 unique enemy types total with spare dialogue
 
 ### Backend Architecture
 
