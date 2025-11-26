@@ -11,6 +11,11 @@ export interface PlanetTheme {
   enemies: PlanetEnemy[];
 }
 
+export type AttackPattern = 
+  | "rain" | "spiral" | "sides" | "wave" | "aimed" | "corners"
+  | "burst" | "orbit" | "cross" | "scatter" | "chase" | "pulse"
+  | "zigzag" | "split" | "bounce" | "sweep" | "vortex" | "barrage";
+
 export interface PlanetEnemy {
   name: string;
   hp: number;
@@ -18,6 +23,7 @@ export interface PlanetEnemy {
   def: number;
   color: string;
   spareDialogue: string[];
+  attackPattern?: AttackPattern;
 }
 
 export const PLANET_DATA: PlanetTheme[] = [

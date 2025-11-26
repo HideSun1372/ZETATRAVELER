@@ -25,6 +25,8 @@ export function Hub() {
     hp,
     maxHp,
     level,
+    hope,
+    hopeBonus,
     nebuliShards,
     nebuliTotal,
     travelers,
@@ -389,10 +391,13 @@ export function Hub() {
         style={{ fontFamily: "'Courier New', monospace" }}
       >
         <div>
-          <span className="text-gray-400">HP:</span> {hp}/{maxHp}
+          <span className="text-gray-400">HP:</span> {hp}/{maxHp + hopeBonus.hp}
         </div>
         <div>
           <span className="text-gray-400">LV:</span> {level}
+        </div>
+        <div>
+          <span className="text-cyan-400">HOPE:</span> {hope}
         </div>
         <div>
           <span className="text-purple-400">NEBULI:</span> {nebuliShards} shards | {nebuliTotal} cores

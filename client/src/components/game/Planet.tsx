@@ -54,6 +54,12 @@ export function Planet() {
   const [planetSealed, setPlanetSealed] = useState(false);
   const [showVictory, setShowVictory] = useState(false);
   
+  const [puzzleActive, setPuzzleActive] = useState(false);
+  const [puzzleSequence, setPuzzleSequence] = useState<string[]>([]);
+  const [playerInput, setPlayerInput] = useState<string[]>([]);
+  const [puzzlePhase, setPuzzlePhase] = useState<"showing" | "input" | "success" | "fail">("showing");
+  const [puzzleShowIndex, setPuzzleShowIndex] = useState(0);
+  
   const keysPressed = useRef<Set<string>>(new Set());
   const animationRef = useRef<number>();
   
@@ -175,9 +181,31 @@ export function Planet() {
     }
   };
   
-  const sealPlanetCore = () => {
-    setPlanetSealed(true);
+  const generatePuzzleSequence = () => {
+    const directions = ["up", "down", "left", "right"];
+    const baseLength = 3;
+    const scaleFactor = Math.floor(currentPlanetId / 8);
+    const length = Math.min(baseLength + scaleFactor, 8);
+    const sequence: string[] = [];
+    for (let i = 0; i < length; i++) {
+      sequence.push(directions[Math.floor(Math.random() * directions.length)]);
+    }
+    return sequence;
+  };
+
+  const startPuzzle = () => {
     setShowSealPrompt(false);
+    setPuzzleActive(true);
+    const sequence = generatePuzzleSequence();
+    setPuzzleSequence(sequence);
+    setPlayerInput([]);
+    setPuzzlePhase("showing");
+    setPuzzleShowIndex(0);
+  };
+
+  const completeSeal = () => {
+    setPuzzleActive(false);
+    setPlanetSealed(true);
     setShowVictory(true);
     
     const state = useRPG.getState();
@@ -197,13 +225,68 @@ export function Planet() {
     }, 3000);
   };
 
+  const handlePuzzleInput = (direction: string) => {
+    if (puzzlePhase !== "input") return;
+    
+    const newInput = [...playerInput, direction];
+    setPlayerInput(newInput);
+    
+    if (newInput[newInput.length - 1] !== puzzleSequence[newInput.length - 1]) {
+      setPuzzlePhase("fail");
+      setTimeout(() => {
+        setPlayerInput([]);
+        setPuzzlePhase("showing");
+        setPuzzleShowIndex(0);
+      }, 1000);
+      return;
+    }
+    
+    if (newInput.length === puzzleSequence.length) {
+      setPuzzlePhase("success");
+      setTimeout(() => {
+        completeSeal();
+      }, 1000);
+    }
+  };
+
+  useEffect(() => {
+    if (puzzlePhase === "showing" && puzzleActive) {
+      if (puzzleShowIndex < puzzleSequence.length) {
+        const timer = setTimeout(() => {
+          setPuzzleShowIndex(puzzleShowIndex + 1);
+        }, 700);
+        return () => clearTimeout(timer);
+      } else {
+        const timer = setTimeout(() => {
+          setPuzzlePhase("input");
+        }, 500);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [puzzlePhase, puzzleShowIndex, puzzleSequence.length, puzzleActive]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (showVictory) return;
       
+      if (puzzleActive && puzzlePhase === "input") {
+        if (e.key === "ArrowUp" || e.key === "w" || e.key === "W") {
+          handlePuzzleInput("up");
+        } else if (e.key === "ArrowDown" || e.key === "s" || e.key === "S") {
+          handlePuzzleInput("down");
+        } else if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") {
+          handlePuzzleInput("left");
+        } else if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") {
+          handlePuzzleInput("right");
+        }
+        return;
+      }
+      
+      if (puzzleActive) return;
+      
       if (showSealPrompt) {
         if (e.key === "z" || e.key === "Z" || e.key === "Enter") {
-          sealPlanetCore();
+          startPuzzle();
         } else if (e.key === "x" || e.key === "X" || e.key === "Shift") {
           setShowSealPrompt(false);
         }
@@ -233,7 +316,7 @@ export function Planet() {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [showExitPrompt, showSealPrompt, showVictory]);
+  }, [showExitPrompt, showSealPrompt, showVictory, puzzleActive, puzzlePhase, playerInput, puzzleSequence]);
 
   useEffect(() => {
     const gameLoop = () => {
@@ -443,14 +526,129 @@ export function Planet() {
                 className="text-white text-lg mb-4"
                 style={{ fontFamily: "'Courier New', monospace" }}
               >
-                Seal this planet's core?
+                Begin core alignment sequence?
               </p>
               <p
                 className="text-gray-400"
                 style={{ fontFamily: "'Courier New', monospace" }}
               >
-                Z/Enter: Yes | X/Shift: No
+                Z/Enter: Begin | X/Shift: Cancel
               </p>
+            </div>
+          </div>
+        )}
+
+        {puzzleActive && (
+          <div
+            className="absolute inset-0 flex items-center justify-center"
+            style={{ backgroundColor: "rgba(0,0,0,0.95)" }}
+          >
+            <div className="bg-black border-4 border-cyan-400 p-8 text-center min-w-[400px]">
+              <p
+                className="text-cyan-400 text-2xl mb-4"
+                style={{ fontFamily: "'Courier New', monospace" }}
+              >
+                CORE ALIGNMENT
+              </p>
+              
+              {puzzlePhase === "showing" && (
+                <div>
+                  <p
+                    className="text-white text-lg mb-6"
+                    style={{ fontFamily: "'Courier New', monospace" }}
+                  >
+                    Memorize the sequence...
+                  </p>
+                  <div className="flex justify-center gap-4 mb-4">
+                    {puzzleSequence.map((dir, i) => {
+                      const isCurrentlyShowing = i === puzzleShowIndex - 1;
+                      const isRevealed = i < puzzleShowIndex;
+                      return (
+                        <div
+                          key={i}
+                          className={`w-16 h-16 border-4 flex items-center justify-center text-3xl transition-all duration-300 ${
+                            isCurrentlyShowing 
+                              ? "border-yellow-400 bg-yellow-900 text-yellow-300 scale-125 shadow-lg shadow-yellow-400/50" 
+                              : isRevealed
+                                ? "border-cyan-400 bg-cyan-900 text-cyan-300" 
+                                : "border-gray-700 text-gray-700 bg-gray-900"
+                          }`}
+                          style={{ 
+                            fontFamily: "'Courier New', monospace",
+                            transform: isCurrentlyShowing ? 'scale(1.25)' : 'scale(1)',
+                          }}
+                        >
+                          {isRevealed ? (
+                            dir === "up" ? "↑" : dir === "down" ? "↓" : dir === "left" ? "←" : "→"
+                          ) : "?"}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p
+                    className="text-cyan-400 text-sm mt-2"
+                    style={{ fontFamily: "'Courier New', monospace" }}
+                  >
+                    Step {puzzleShowIndex} of {puzzleSequence.length}
+                  </p>
+                </div>
+              )}
+              
+              {puzzlePhase === "input" && (
+                <div>
+                  <p
+                    className="text-yellow-400 text-lg mb-6"
+                    style={{ fontFamily: "'Courier New', monospace" }}
+                  >
+                    Enter the sequence!
+                  </p>
+                  <div className="flex justify-center gap-4 mb-4">
+                    {puzzleSequence.map((dir, i) => (
+                      <div
+                        key={i}
+                        className={`w-16 h-16 border-2 flex items-center justify-center text-2xl ${
+                          i < playerInput.length 
+                            ? "border-green-400 bg-green-900 text-green-300" 
+                            : "border-gray-600 text-gray-600"
+                        }`}
+                        style={{ fontFamily: "'Courier New', monospace" }}
+                      >
+                        {i < playerInput.length ? (
+                          playerInput[i] === "up" ? "↑" : playerInput[i] === "down" ? "↓" : playerInput[i] === "left" ? "←" : "→"
+                        ) : "?"}
+                      </div>
+                    ))}
+                  </div>
+                  <p
+                    className="text-gray-400 mt-4"
+                    style={{ fontFamily: "'Courier New', monospace" }}
+                  >
+                    Use Arrow Keys or WASD
+                  </p>
+                </div>
+              )}
+              
+              {puzzlePhase === "success" && (
+                <div>
+                  <p
+                    className="text-green-400 text-2xl animate-pulse"
+                    style={{ fontFamily: "'Courier New', monospace" }}
+                  >
+                    ALIGNMENT COMPLETE!
+                  </p>
+                </div>
+              )}
+              
+              {puzzlePhase === "fail" && (
+                <div>
+                  <p
+                    className="text-red-400 text-2xl"
+                    style={{ fontFamily: "'Courier New', monospace" }}
+                  >
+                    MISALIGNMENT! Try again...
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         )}

@@ -57,6 +57,9 @@ interface RPGState {
   atk: number;
   def: number;
   
+  hope: number;
+  hopeBonus: { hp: number; def: number };
+  
   gold: number;
   inventory: InventoryItem[];
   
@@ -90,6 +93,7 @@ interface RPGState {
   heal: (amount: number) => void;
   gainXP: (amount: number) => void;
   levelUp: () => void;
+  gainHope: (amount: number) => void;
   
   addItem: (item: InventoryItem) => void;
   removeItem: (itemId: string) => void;
@@ -156,6 +160,9 @@ export const useRPG = create<RPGState>((set, get) => ({
   atk: 10,
   def: 5,
   
+  hope: 0,
+  hopeBonus: { hp: 0, def: 0 },
+  
   gold: 0,
   inventory: [
     { id: "bandage", name: "BANDAGE", description: "Heals 10 HP", type: "healing", value: 10, quantity: 3 },
@@ -197,14 +204,16 @@ export const useRPG = create<RPGState>((set, get) => ({
   
   takeDamage: (amount) => {
     const state = get();
-    const actualDamage = Math.max(1, amount - state.def);
+    const totalDef = state.def + state.hopeBonus.def;
+    const actualDamage = Math.max(1, amount - totalDef);
     const newHp = Math.max(0, state.hp - actualDamage);
     set({ hp: newHp });
   },
   
   heal: (amount) => {
     const state = get();
-    set({ hp: Math.min(state.maxHp, state.hp + amount) });
+    const totalMaxHp = state.maxHp + state.hopeBonus.hp;
+    set({ hp: Math.min(totalMaxHp, state.hp + amount) });
   },
   
   gainXP: (amount) => {
@@ -228,6 +237,21 @@ export const useRPG = create<RPGState>((set, get) => ({
       hp: state.maxHp + 4,
       atk: state.atk + 2,
       def: state.def + 1,
+    });
+  },
+  
+  gainHope: (amount) => {
+    const state = get();
+    const newHope = state.hope + amount;
+    const hpBonus = Math.floor(newHope / 5) * 2;
+    const defBonus = Math.floor(newHope / 3);
+    const newMaxHp = 20 + state.hopeBonus.hp + (hpBonus - state.hopeBonus.hp);
+    const hpGain = hpBonus - state.hopeBonus.hp;
+    set({
+      hope: newHope,
+      hopeBonus: { hp: hpBonus, def: defBonus },
+      maxHp: state.maxHp + hpGain,
+      hp: Math.min(state.maxHp + hpGain, state.hp + hpGain),
     });
   },
   
@@ -288,6 +312,7 @@ export const useRPG = create<RPGState>((set, get) => ({
           p.id === state.currentPlanetId ? { ...p, coreSealed: true } : p
         ),
       });
+      get().gainHope(3);
     }
   },
   
@@ -337,6 +362,7 @@ export const useRPG = create<RPGState>((set, get) => ({
             : p
         ),
       });
+      get().gainHope(1);
     }
     
     get().updateRoute();

@@ -24,6 +24,8 @@ export function Battle() {
     maxHp,
     level,
     atk,
+    def,
+    hopeBonus,
     inventory,
     damageEnemy,
     progressTalk,
@@ -32,6 +34,9 @@ export function Battle() {
     useItem,
     endBattle,
   } = useRPG();
+  
+  const effectiveMaxHp = maxHp + hopeBonus.hp;
+  const effectiveDef = def + hopeBonus.def;
 
   const [menuIndex, setMenuIndex] = useState(0);
   const [actIndex, setActIndex] = useState(0);
@@ -55,10 +60,52 @@ export function Battle() {
   const actOptions = ["Check", "Talk", "Flirt"];
   const healingItems = inventory.filter((i) => i.type === "healing");
 
+  const getEnemyPattern = useCallback((): string => {
+    if (!currentEnemy) return "rain";
+    const name = currentEnemy.name.toUpperCase();
+    
+    if (name.includes("LEAF") || name.includes("PETAL") || name.includes("BLOOM") || name.includes("FLORA") || name.includes("GRASS") || name.includes("FERN")) return "scatter";
+    if (name.includes("MOSS") || name.includes("SPORE") || name.includes("FUNGAL") || name.includes("MYCO") || name.includes("SHROOM") || name.includes("MOLD")) return "pulse";
+    if (name.includes("THORN") || name.includes("SPINE") || name.includes("CACTUS") || name.includes("NEEDLE") || name.includes("SPIKE") || name.includes("BARB")) return "burst";
+    if (name.includes("RAIN") || name.includes("DEW") || name.includes("MIST") || name.includes("PUDDLE") || name.includes("WATER") || name.includes("DRIP") || name.includes("DROP")) return "rain";
+    if (name.includes("WIND") || name.includes("BREEZE") || name.includes("GUST") || name.includes("STORM") || name.includes("AIR") || name.includes("ZEPHYR")) return "sweep";
+    if (name.includes("VINE") || name.includes("SNAKE") || name.includes("TENDRIL") || name.includes("WORM") || name.includes("SERPENT") || name.includes("CRAWLER")) return "zigzag";
+    if (name.includes("BEE") || name.includes("WASP") || name.includes("INSECT") || name.includes("BUG") || name.includes("FLY") || name.includes("MOTH") || name.includes("NECTAR")) return "chase";
+    if (name.includes("SPIRIT") || name.includes("GHOST") || name.includes("WISP") || name.includes("SOUL") || name.includes("SPECTER") || name.includes("PHANTOM") || name.includes("SHADE")) return "orbit";
+    if (name.includes("KNIGHT") || name.includes("WARRIOR") || name.includes("GUARD") || name.includes("SOLDIER") || name.includes("CHAMPION") || name.includes("PALADIN") || name.includes("REED")) return "cross";
+    if (name.includes("CRYSTAL") || name.includes("GEM") || name.includes("SHARD") || name.includes("PRISM") || name.includes("GLASS") || name.includes("DIAMOND")) return "split";
+    if (name.includes("ICE") || name.includes("FROST") || name.includes("SNOW") || name.includes("FREEZE") || name.includes("COLD") || name.includes("GLACIAL") || name.includes("CHILL")) return "wave";
+    if (name.includes("FIRE") || name.includes("FLAME") || name.includes("BLAZE") || name.includes("EMBER")) return "barrage";
+    if (name.includes("LAVA") || name.includes("MAGMA") || name.includes("MOLTEN") || name.includes("VOLCANIC")) return "vortex";
+    if (name.includes("VOID") || name.includes("SHADOW") || name.includes("DARK") || name.includes("ABYSS")) return "aimed";
+    if (name.includes("STAR") || name.includes("CELESTIAL") || name.includes("COSMIC") || name.includes("ASTRAL")) return "spiral";
+    if (name.includes("ANCIENT") || name.includes("ELDER") || name.includes("TITAN") || name.includes("COLOSSUS") || name.includes("GOLEM")) return "corners";
+    if (name.includes("BEAST") || name.includes("CREATURE") || name.includes("MONSTER") || name.includes("BRUTE") || name.includes("HULK")) return "bounce";
+    if (name.includes("STONE") || name.includes("ROCK") || name.includes("TOTEM") || name.includes("BOULDER") || name.includes("GRANITE")) return "sides";
+    if (name.includes("FOG") || name.includes("HAZE") || name.includes("CLOUD") || name.includes("VAPOR") || name.includes("STEAM")) return "scatter";
+    if (name.includes("SLIME") || name.includes("OOZE") || name.includes("BLOB") || name.includes("JELLY") || name.includes("GOO")) return "pulse";
+    if (name.includes("DANCER") || name.includes("JUMPER") || name.includes("HOPPER") || name.includes("LEAPER")) return "zigzag";
+    if (name.includes("APE") || name.includes("GORILLA") || name.includes("MONKEY") || name.includes("PRIMATE")) return "barrage";
+    if (name.includes("CRAB") || name.includes("LOBSTER") || name.includes("SHELL") || name.includes("CLAM")) return "sides";
+    if (name.includes("FISH") || name.includes("SHARK") || name.includes("EEL") || name.includes("PIRANHA") || name.includes("AQUA")) return "wave";
+    if (name.includes("BIRD") || name.includes("HAWK") || name.includes("EAGLE") || name.includes("RAVEN") || name.includes("OWL")) return "sweep";
+    if (name.includes("DEMON") || name.includes("DEVIL") || name.includes("IMP") || name.includes("FIEND")) return "vortex";
+    if (name.includes("ANGEL") || name.includes("SERAPH") || name.includes("HERALD") || name.includes("DIVINE")) return "orbit";
+    if (name.includes("ROBOT") || name.includes("MECH") || name.includes("DROID") || name.includes("AUTOMATON")) return "cross";
+    if (name.includes("PANDA") || name.includes("BEAR") || name.includes("WOLF") || name.includes("FOX") || name.includes("CAT")) return "chase";
+    if (name.includes("CHIME") || name.includes("BELL") || name.includes("RING") || name.includes("GONG")) return "pulse";
+    if (name.includes("WALKER") || name.includes("STRIDER") || name.includes("RUNNER") || name.includes("STALKER")) return "zigzag";
+    if (name.includes("WARDEN") || name.includes("KEEPER") || name.includes("SENTINEL") || name.includes("PROTECTOR")) return "cross";
+    if (name.includes("SEEKER") || name.includes("HUNTER") || name.includes("TRACKER") || name.includes("PREDATOR")) return "aimed";
+    
+    const patterns = ["rain", "spiral", "sides", "wave", "aimed", "corners", "burst", "scatter", "pulse"];
+    return patterns[Math.floor(Math.random() * patterns.length)];
+  }, [currentEnemy]);
+
   const spawnBullets = useCallback((patternOverride?: string) => {
     const newBullets: Bullet[] = [];
-    const patterns = ["rain", "spiral", "sides", "wave", "aimed", "corners"];
-    const pattern = patternOverride || patterns[Math.floor(Math.random() * patterns.length)];
+    const pattern = patternOverride || getEnemyPattern();
+    const speed = 2.5 + (currentEnemy?.atk || 5) / 10;
 
     if (pattern === "rain") {
       for (let i = 0; i < 8; i++) {
@@ -67,20 +114,20 @@ export function Battle() {
           x: Math.random() * ARENA_WIDTH,
           y: -10,
           vx: (Math.random() - 0.5) * 2,
-          vy: 3 + Math.random() * 2,
+          vy: speed + Math.random() * 1.5,
         });
       }
     } else if (pattern === "spiral") {
       const centerX = ARENA_WIDTH / 2;
       const centerY = ARENA_HEIGHT / 2;
-      for (let i = 0; i < 8; i++) {
-        const angle = (i / 8) * Math.PI * 2;
+      for (let i = 0; i < 10; i++) {
+        const angle = (i / 10) * Math.PI * 2;
         newBullets.push({
           id: bulletIdRef.current++,
           x: centerX,
           y: centerY,
-          vx: Math.cos(angle) * 3.5,
-          vy: Math.sin(angle) * 3.5,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
         });
       }
     } else if (pattern === "sides") {
@@ -89,25 +136,26 @@ export function Battle() {
           id: bulletIdRef.current++,
           x: -10,
           y: Math.random() * ARENA_HEIGHT,
-          vx: 4,
+          vx: speed + 1,
           vy: (Math.random() - 0.5) * 2,
         });
         newBullets.push({
           id: bulletIdRef.current++,
           x: ARENA_WIDTH + 10,
           y: Math.random() * ARENA_HEIGHT,
-          vx: -4,
+          vx: -(speed + 1),
           vy: (Math.random() - 0.5) * 2,
         });
       }
     } else if (pattern === "wave") {
-      for (let i = 0; i < 6; i++) {
+      for (let i = 0; i < 8; i++) {
+        const offset = Math.sin(i * 0.5) * 30;
         newBullets.push({
           id: bulletIdRef.current++,
-          x: (i / 5) * ARENA_WIDTH,
-          y: -10,
+          x: (i / 7) * ARENA_WIDTH,
+          y: -10 + offset,
           vx: 0,
-          vy: 3,
+          vy: speed,
         });
       }
     } else if (pattern === "aimed") {
@@ -127,16 +175,16 @@ export function Battle() {
           id: bulletIdRef.current++,
           x: corner.x,
           y: corner.y,
-          vx: (dx / dist) * 3,
-          vy: (dy / dist) * 3,
+          vx: (dx / dist) * speed,
+          vy: (dy / dist) * speed,
         });
       }
     } else if (pattern === "corners") {
       const spawnPoints = [
-        { x: 0, y: 0, vx: 3, vy: 3 },
-        { x: ARENA_WIDTH, y: 0, vx: -3, vy: 3 },
-        { x: 0, y: ARENA_HEIGHT, vx: 3, vy: -3 },
-        { x: ARENA_WIDTH, y: ARENA_HEIGHT, vx: -3, vy: -3 },
+        { x: 0, y: 0, vx: speed, vy: speed },
+        { x: ARENA_WIDTH, y: 0, vx: -speed, vy: speed },
+        { x: 0, y: ARENA_HEIGHT, vx: speed, vy: -speed },
+        { x: ARENA_WIDTH, y: ARENA_HEIGHT, vx: -speed, vy: -speed },
       ];
       for (const point of spawnPoints) {
         newBullets.push({
@@ -147,10 +195,176 @@ export function Battle() {
           vy: point.vy,
         });
       }
+    } else if (pattern === "burst") {
+      const centerX = ARENA_WIDTH / 2;
+      const centerY = ARENA_HEIGHT / 2;
+      for (let i = 0; i < 12; i++) {
+        const angle = (i / 12) * Math.PI * 2 + Math.random() * 0.3;
+        newBullets.push({
+          id: bulletIdRef.current++,
+          x: centerX + (Math.random() - 0.5) * 40,
+          y: centerY + (Math.random() - 0.5) * 40,
+          vx: Math.cos(angle) * (speed + 1),
+          vy: Math.sin(angle) * (speed + 1),
+        });
+      }
+    } else if (pattern === "orbit") {
+      const centerX = ARENA_WIDTH / 2;
+      const centerY = ARENA_HEIGHT / 2;
+      const time = Date.now() / 500;
+      for (let i = 0; i < 6; i++) {
+        const angle = time + (i / 6) * Math.PI * 2;
+        const radius = 80;
+        newBullets.push({
+          id: bulletIdRef.current++,
+          x: centerX + Math.cos(angle) * radius,
+          y: centerY + Math.sin(angle) * radius,
+          vx: Math.cos(angle + Math.PI / 2) * speed,
+          vy: Math.sin(angle + Math.PI / 2) * speed,
+        });
+      }
+    } else if (pattern === "cross") {
+      for (let i = 0; i < 5; i++) {
+        newBullets.push({
+          id: bulletIdRef.current++,
+          x: -10,
+          y: ARENA_HEIGHT / 2 + (i - 2) * 25,
+          vx: speed + 1,
+          vy: 0,
+        });
+        newBullets.push({
+          id: bulletIdRef.current++,
+          x: (i / 4) * ARENA_WIDTH,
+          y: -10,
+          vx: 0,
+          vy: speed + 1,
+        });
+      }
+    } else if (pattern === "scatter") {
+      for (let i = 0; i < 10; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const edge = Math.floor(Math.random() * 4);
+        let x = 0, y = 0;
+        if (edge === 0) { x = Math.random() * ARENA_WIDTH; y = -10; }
+        else if (edge === 1) { x = Math.random() * ARENA_WIDTH; y = ARENA_HEIGHT + 10; }
+        else if (edge === 2) { x = -10; y = Math.random() * ARENA_HEIGHT; }
+        else { x = ARENA_WIDTH + 10; y = Math.random() * ARENA_HEIGHT; }
+        const dx = ARENA_WIDTH / 2 - x;
+        const dy = ARENA_HEIGHT / 2 - y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        newBullets.push({
+          id: bulletIdRef.current++,
+          x,
+          y,
+          vx: (dx / dist) * speed * 0.8,
+          vy: (dy / dist) * speed * 0.8,
+        });
+      }
+    } else if (pattern === "chase") {
+      const targetX = soulPosition.x + SOUL_SIZE / 2;
+      const targetY = soulPosition.y + SOUL_SIZE / 2;
+      for (let i = 0; i < 3; i++) {
+        const startX = Math.random() * ARENA_WIDTH;
+        const startY = Math.random() < 0.5 ? -10 : ARENA_HEIGHT + 10;
+        const dx = targetX - startX;
+        const dy = targetY - startY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        newBullets.push({
+          id: bulletIdRef.current++,
+          x: startX,
+          y: startY,
+          vx: (dx / dist) * (speed + 0.5),
+          vy: (dy / dist) * (speed + 0.5),
+        });
+      }
+    } else if (pattern === "pulse") {
+      const centerX = ARENA_WIDTH / 2;
+      const centerY = ARENA_HEIGHT / 2;
+      const rings = 2;
+      for (let r = 0; r < rings; r++) {
+        for (let i = 0; i < 6; i++) {
+          const angle = (i / 6) * Math.PI * 2 + (r * Math.PI / 6);
+          newBullets.push({
+            id: bulletIdRef.current++,
+            x: centerX,
+            y: centerY,
+            vx: Math.cos(angle) * (speed + r * 0.5),
+            vy: Math.sin(angle) * (speed + r * 0.5),
+          });
+        }
+      }
+    } else if (pattern === "zigzag") {
+      for (let i = 0; i < 6; i++) {
+        const startY = (i / 5) * ARENA_HEIGHT;
+        newBullets.push({
+          id: bulletIdRef.current++,
+          x: -10,
+          y: startY,
+          vx: speed,
+          vy: Math.sin(i) * 2,
+        });
+      }
+    } else if (pattern === "split") {
+      const startX = ARENA_WIDTH / 2;
+      for (let i = 0; i < 4; i++) {
+        const angle = (i / 4) * Math.PI - Math.PI / 2;
+        newBullets.push({
+          id: bulletIdRef.current++,
+          x: startX,
+          y: -10,
+          vx: Math.cos(angle) * speed * 0.8,
+          vy: Math.abs(Math.sin(angle)) * speed + 1,
+        });
+      }
+    } else if (pattern === "bounce") {
+      for (let i = 0; i < 5; i++) {
+        newBullets.push({
+          id: bulletIdRef.current++,
+          x: Math.random() * ARENA_WIDTH,
+          y: -10,
+          vx: (Math.random() - 0.5) * 4,
+          vy: speed + Math.random(),
+        });
+      }
+    } else if (pattern === "sweep") {
+      const time = Date.now() / 1000;
+      for (let i = 0; i < 8; i++) {
+        newBullets.push({
+          id: bulletIdRef.current++,
+          x: -10,
+          y: (i / 7) * ARENA_HEIGHT,
+          vx: speed + 1.5,
+          vy: Math.sin(time + i * 0.5) * 1.5,
+        });
+      }
+    } else if (pattern === "vortex") {
+      const centerX = ARENA_WIDTH / 2;
+      const centerY = ARENA_HEIGHT / 2;
+      for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2;
+        const radius = 120;
+        newBullets.push({
+          id: bulletIdRef.current++,
+          x: centerX + Math.cos(angle) * radius,
+          y: centerY + Math.sin(angle) * radius,
+          vx: -Math.cos(angle) * speed * 0.5 + Math.sin(angle) * 1.5,
+          vy: -Math.sin(angle) * speed * 0.5 - Math.cos(angle) * 1.5,
+        });
+      }
+    } else if (pattern === "barrage") {
+      for (let i = 0; i < 12; i++) {
+        newBullets.push({
+          id: bulletIdRef.current++,
+          x: Math.random() * ARENA_WIDTH,
+          y: -10 - Math.random() * 30,
+          vx: (Math.random() - 0.5) * 1.5,
+          vy: speed + Math.random() * 2,
+        });
+      }
     }
 
     setBullets((prev) => [...prev, ...newBullets]);
-  }, [soulPosition]);
+  }, [soulPosition, currentEnemy, getEnemyPattern]);
 
   const handleMenuSelect = () => {
     const option = menuOptions[menuIndex];
@@ -626,11 +840,16 @@ export function Battle() {
       >
         <div>
           <span className="text-gray-400">HP:</span>{" "}
-          <span className={hp < maxHp / 4 ? "text-red-500" : ""}>{hp}/{maxHp}</span>
+          <span className={hp < effectiveMaxHp / 4 ? "text-red-500" : ""}>{hp}/{effectiveMaxHp}</span>
         </div>
         <div>
           <span className="text-gray-400">LV:</span> {level}
         </div>
+        {hopeBonus.def > 0 && (
+          <div>
+            <span className="text-cyan-400">DEF+{hopeBonus.def}</span>
+          </div>
+        )}
         <div className="flex items-center gap-2">
           <span className="text-gray-400">MERCY:</span>
           <div className="w-24 h-3 bg-gray-800 border border-gray-600">
