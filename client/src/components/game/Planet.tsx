@@ -184,11 +184,12 @@ export function Planet() {
     useRPG.setState({
       planets: state.planets.map((p) =>
         p.id === currentPlanetId 
-          ? { ...p, coreSealed: true, allEnemiesCleared: true }
+          ? { ...p, allEnemiesCleared: true }
           : p
       ),
-      nebuliTotal: state.nebuliTotal + shards.filter(s => s.collected).length,
     });
+    
+    sealCore();
     
     setTimeout(() => {
       setShowVictory(false);
@@ -473,10 +474,16 @@ export function Planet() {
                 {currentPlanet?.name} is now safe.
               </p>
               <p
-                className="text-green-400"
+                className="text-green-400 mb-1"
                 style={{ fontFamily: "'Courier New', monospace" }}
               >
-                +{shards.filter(s => s.collected).length} Nebuli Shards
+                +1 Core Sealed
+              </p>
+              <p
+                className="text-purple-400"
+                style={{ fontFamily: "'Courier New', monospace" }}
+              >
+                {shards.filter(s => s.collected).length} Nebuli Shards Collected
               </p>
             </div>
           </div>
