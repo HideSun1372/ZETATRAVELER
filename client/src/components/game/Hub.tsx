@@ -104,10 +104,12 @@ export function Hub() {
   ], []);
 
   const portals = useMemo(() => [
-    { id: 1, name: "VERDANTIS", x: 3, y: 3, color: "#00FF00" },
-    { id: 2, name: "CRYSTALLUM", x: 17, y: 3, color: "#00FFFF" },
-    { id: 3, name: "OBSIDIAN PRIME", x: 3, y: 12, color: "#8B0000" },
+    { id: 1, name: "VERDANTIS", x: 4, y: 4, color: "#00FF00" },
+    { id: 2, name: "CRYSTALLUM", x: 16, y: 4, color: "#00FFFF" },
+    { id: 3, name: "OBSIDIAN PRIME", x: 10, y: 12, color: "#8B0000" },
   ], []);
+  
+  const [nearPortal, setNearPortal] = useState<typeof portals[0] | null>(null);
 
   const walls = useMemo(() => {
     const w: { x: number; y: number }[] = [];
@@ -256,6 +258,17 @@ export function Hub() {
         }
       }
       
+      const tileX = Math.floor(playerPosition.x / TILE_SIZE);
+      const tileY = Math.floor(playerPosition.y / TILE_SIZE);
+      let foundPortal = null;
+      for (const portal of portals) {
+        if (Math.abs(tileX - portal.x) <= 1 && Math.abs(tileY - portal.y) <= 1) {
+          foundPortal = portal;
+          break;
+        }
+      }
+      setNearPortal(foundPortal);
+      
       animationRef.current = requestAnimationFrame(gameLoop);
     };
     
@@ -301,20 +314,34 @@ export function Hub() {
         {portals.map((portal) => (
           <div
             key={`portal-${portal.id}`}
-            className="absolute flex items-center justify-center animate-pulse"
+            className="absolute flex flex-col items-center justify-center animate-pulse"
             style={{
-              left: portal.x * TILE_SIZE,
-              top: portal.y * TILE_SIZE,
-              width: TILE_SIZE,
-              height: TILE_SIZE,
+              left: portal.x * TILE_SIZE - TILE_SIZE / 2,
+              top: portal.y * TILE_SIZE - TILE_SIZE / 2,
+              width: TILE_SIZE * 2,
+              height: TILE_SIZE * 2,
               backgroundColor: portal.color,
-              opacity: 0.8,
+              opacity: 0.9,
               borderRadius: "50%",
+              boxShadow: `0 0 20px ${portal.color}`,
             }}
           >
-            <span className="text-xs text-white font-bold">{portal.id}</span>
+            <span className="text-sm text-white font-bold">{portal.name}</span>
           </div>
         ))}
+        
+        {nearPortal && !showDialogue && (
+          <div
+            className="absolute left-1/2 bottom-4 transform -translate-x-1/2 bg-black border-2 border-white px-4 py-2"
+          >
+            <p
+              className="text-white text-center"
+              style={{ fontFamily: "'Courier New', monospace" }}
+            >
+              Press Z/Enter to travel to {nearPortal.name}
+            </p>
+          </div>
+        )}
         
         {npcs.map((npc) => (
           <div
