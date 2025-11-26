@@ -51,9 +51,17 @@ export function Planet() {
   const [shards, setShards] = useState<Shard[]>([]);
   const [enemies, setEnemies] = useState<EnemySpawn[]>([]);
   const [showExitPrompt, setShowExitPrompt] = useState(false);
+  const [showSealPrompt, setShowSealPrompt] = useState(false);
+  const [planetSealed, setPlanetSealed] = useState(false);
+  const [showVictory, setShowVictory] = useState(false);
   
   const keysPressed = useRef<Set<string>>(new Set());
   const animationRef = useRef<number>();
+  
+  const CORE_POSITION = { x: Math.floor(MAP_WIDTH / 2), y: Math.floor(MAP_HEIGHT / 2) };
+  
+  const allEnemiesDefeated = enemies.length > 0 && enemies.every(e => defeatedEnemyIds.includes(e.id));
+  const allShardsCollected = shards.length > 0 && shards.every(s => s.collected);
 
   const walls = useMemo(() => {
     const w: { x: number; y: number }[] = [];
@@ -155,10 +163,37 @@ export function Planet() {
     if (tileX <= 1) {
       setShowExitPrompt(true);
     }
+    
+    if (allEnemiesDefeated && !planetSealed &&
+        Math.abs(tileX - CORE_POSITION.x) < 1 && Math.abs(tileY - CORE_POSITION.y) < 1) {
+      setShowSealPrompt(true);
+    }
+  };
+  
+  const sealPlanetCore = () => {
+    setPlanetSealed(true);
+    setShowSealPrompt(false);
+    setShowVictory(true);
+    
+    setTimeout(() => {
+      setShowVictory(false);
+      returnToHub();
+    }, 3000);
   };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (showVictory) return;
+      
+      if (showSealPrompt) {
+        if (e.key === "z" || e.key === "Z" || e.key === "Enter") {
+          sealPlanetCore();
+        } else if (e.key === "x" || e.key === "X" || e.key === "Shift") {
+          setShowSealPrompt(false);
+        }
+        return;
+      }
+      
       if (showExitPrompt) {
         if (e.key === "z" || e.key === "Z" || e.key === "Enter") {
           returnToHub();
@@ -182,7 +217,7 @@ export function Planet() {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [showExitPrompt]);
+  }, [showExitPrompt, showSealPrompt, showVictory]);
 
   useEffect(() => {
     const gameLoop = () => {
@@ -322,6 +357,21 @@ export function Planet() {
           }}
         />
 
+        {allEnemiesDefeated && !planetSealed && (
+          <div
+            className="absolute animate-pulse"
+            style={{
+              left: CORE_POSITION.x * TILE_SIZE,
+              top: CORE_POSITION.y * TILE_SIZE,
+              width: TILE_SIZE,
+              height: TILE_SIZE,
+              backgroundColor: "#FFD700",
+              borderRadius: "50%",
+              boxShadow: "0 0 20px #FFD700, 0 0 40px #FF8C00",
+            }}
+          />
+        )}
+
         {showExitPrompt && (
           <div
             className="absolute inset-0 flex items-center justify-center"
@@ -339,6 +389,62 @@ export function Planet() {
                 style={{ fontFamily: "'Courier New', monospace" }}
               >
                 Z/Enter: Yes | X/Shift: No
+              </p>
+            </div>
+          </div>
+        )}
+        
+        {showSealPrompt && (
+          <div
+            className="absolute inset-0 flex items-center justify-center"
+            style={{ backgroundColor: "rgba(0,0,0,0.8)" }}
+          >
+            <div className="bg-black border-4 border-yellow-400 p-6 text-center">
+              <p
+                className="text-yellow-400 text-xl mb-2"
+                style={{ fontFamily: "'Courier New', monospace" }}
+              >
+                PLANETARY CORE
+              </p>
+              <p
+                className="text-white text-lg mb-4"
+                style={{ fontFamily: "'Courier New', monospace" }}
+              >
+                Seal this planet's core?
+              </p>
+              <p
+                className="text-gray-400"
+                style={{ fontFamily: "'Courier New', monospace" }}
+              >
+                Z/Enter: Yes | X/Shift: No
+              </p>
+            </div>
+          </div>
+        )}
+        
+        {showVictory && (
+          <div
+            className="absolute inset-0 flex items-center justify-center"
+            style={{ backgroundColor: "rgba(0,0,0,0.9)" }}
+          >
+            <div className="text-center">
+              <p
+                className="text-yellow-400 text-3xl mb-4 animate-pulse"
+                style={{ fontFamily: "'Courier New', monospace" }}
+              >
+                PLANET SEALED!
+              </p>
+              <p
+                className="text-white text-xl mb-2"
+                style={{ fontFamily: "'Courier New', monospace" }}
+              >
+                {currentPlanet?.name} is now safe.
+              </p>
+              <p
+                className="text-green-400"
+                style={{ fontFamily: "'Courier New', monospace" }}
+              >
+                +{shards.filter(s => s.collected).length} Nebuli Shards
               </p>
             </div>
           </div>
@@ -369,7 +475,10 @@ export function Planet() {
         className="mt-2 text-gray-500 text-sm"
         style={{ fontFamily: "'Courier New', monospace" }}
       >
-        Collect purple shards | Touch enemies to battle | Left edge to exit
+        {allEnemiesDefeated && !planetSealed 
+          ? "All enemies defeated! Find the golden CORE to seal this planet!"
+          : "Collect shards | Defeat or spare all enemies | Left edge to exit"
+        }
       </div>
     </div>
   );
