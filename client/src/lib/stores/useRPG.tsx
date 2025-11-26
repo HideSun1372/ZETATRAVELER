@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { PLANET_DATA } from "../data/planets";
 
 export type GamePhase = "vessel" | "menu" | "hub" | "planet" | "battle" | "gameover";
 export type Route = "pacifist" | "neutral" | "genocide";
@@ -120,17 +121,11 @@ interface RPGState {
 }
 
 const generatePlanets = (): Planet[] => {
-  const planetNames = [
-    "Verdantis", "Crystallum", "Obsidian Prime", "Nebula's Edge", "Frostveil",
-    "Ember Plains", "Aquanis", "Shadow Reach", "Luminos", "Dustworld",
-    "Thornspire", "Misthollow", "Ironclad", "Voidrift", "Starfall",
-  ];
-  
-  return planetNames.map((name, index) => ({
-    id: index + 1,
-    name,
+  return PLANET_DATA.map((planet) => ({
+    id: planet.id,
+    name: planet.name,
     shardsCollected: 0,
-    totalShards: 25,
+    totalShards: Math.floor(75 / 50) + (planet.id <= 25 ? 1 : 0),
     coreSealed: false,
     enemiesKilled: 0,
     enemiesSpared: 0,
