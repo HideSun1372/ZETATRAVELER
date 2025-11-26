@@ -52,10 +52,10 @@ export function Battle() {
   const actOptions = ["Check", "Talk", "Flirt"];
   const healingItems = inventory.filter((i) => i.type === "healing");
 
-  const spawnBullets = useCallback(() => {
+  const spawnBullets = useCallback((patternOverride?: string) => {
     const newBullets: Bullet[] = [];
-    const patterns = ["rain", "spiral", "sides"];
-    const pattern = patterns[Math.floor(Math.random() * patterns.length)];
+    const patterns = ["rain", "spiral", "sides", "wave", "aimed", "corners"];
+    const pattern = patternOverride || patterns[Math.floor(Math.random() * patterns.length)];
 
     if (pattern === "rain") {
       for (let i = 0; i < 8; i++) {
@@ -70,17 +70,17 @@ export function Battle() {
     } else if (pattern === "spiral") {
       const centerX = ARENA_WIDTH / 2;
       const centerY = ARENA_HEIGHT / 2;
-      for (let i = 0; i < 6; i++) {
-        const angle = (i / 6) * Math.PI * 2;
+      for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2;
         newBullets.push({
           id: bulletIdRef.current++,
           x: centerX,
           y: centerY,
-          vx: Math.cos(angle) * 4,
-          vy: Math.sin(angle) * 4,
+          vx: Math.cos(angle) * 3.5,
+          vy: Math.sin(angle) * 3.5,
         });
       }
-    } else {
+    } else if (pattern === "sides") {
       for (let i = 0; i < 4; i++) {
         newBullets.push({
           id: bulletIdRef.current++,
@@ -97,10 +97,57 @@ export function Battle() {
           vy: (Math.random() - 0.5) * 2,
         });
       }
+    } else if (pattern === "wave") {
+      for (let i = 0; i < 6; i++) {
+        newBullets.push({
+          id: bulletIdRef.current++,
+          x: (i / 5) * ARENA_WIDTH,
+          y: -10,
+          vx: 0,
+          vy: 3,
+        });
+      }
+    } else if (pattern === "aimed") {
+      const targetX = soulPosition.x + SOUL_SIZE / 2;
+      const targetY = soulPosition.y + SOUL_SIZE / 2;
+      const corners = [
+        { x: 0, y: 0 },
+        { x: ARENA_WIDTH, y: 0 },
+        { x: 0, y: ARENA_HEIGHT },
+        { x: ARENA_WIDTH, y: ARENA_HEIGHT },
+      ];
+      for (const corner of corners) {
+        const dx = targetX - corner.x;
+        const dy = targetY - corner.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        newBullets.push({
+          id: bulletIdRef.current++,
+          x: corner.x,
+          y: corner.y,
+          vx: (dx / dist) * 3,
+          vy: (dy / dist) * 3,
+        });
+      }
+    } else if (pattern === "corners") {
+      const spawnPoints = [
+        { x: 0, y: 0, vx: 3, vy: 3 },
+        { x: ARENA_WIDTH, y: 0, vx: -3, vy: 3 },
+        { x: 0, y: ARENA_HEIGHT, vx: 3, vy: -3 },
+        { x: ARENA_WIDTH, y: ARENA_HEIGHT, vx: -3, vy: -3 },
+      ];
+      for (const point of spawnPoints) {
+        newBullets.push({
+          id: bulletIdRef.current++,
+          x: point.x,
+          y: point.y,
+          vx: point.vx,
+          vy: point.vy,
+        });
+      }
     }
 
     setBullets((prev) => [...prev, ...newBullets]);
-  }, []);
+  }, [soulPosition]);
 
   const handleMenuSelect = () => {
     const option = menuOptions[menuIndex];
@@ -233,6 +280,8 @@ export function Battle() {
     }
   };
 
+  const [warningText, setWarningText] = useState("");
+  
   const startEnemyTurn = () => {
     setBattlePhase("enemy_attack");
     setEnemyTurnActive(true);
@@ -240,8 +289,17 @@ export function Battle() {
     setBullets([]);
     setSoulPosition({ x: ARENA_WIDTH / 2, y: ARENA_HEIGHT - 50 });
     
-    for (let i = 0; i < 3; i++) {
-      setTimeout(() => spawnBullets(), i * 500);
+    const warnings = [
+      "* Bullets incoming! *",
+      "* Watch out! *",
+      "* Here it comes! *",
+      "* Dodge carefully! *",
+    ];
+    setWarningText(warnings[Math.floor(Math.random() * warnings.length)]);
+    setTimeout(() => setWarningText(""), 800);
+    
+    for (let i = 0; i < 4; i++) {
+      setTimeout(() => spawnBullets(), 500 + i * 400);
     }
   };
 
@@ -523,12 +581,22 @@ export function Battle() {
       )}
 
       {battlePhase === "enemy_attack" && (
-        <p
-          className="text-gray-400 animate-pulse"
-          style={{ fontFamily: "'Courier New', monospace" }}
-        >
-          DODGE! Use WASD/Arrows to move your SOUL!
-        </p>
+        <div className="text-center">
+          {warningText && (
+            <p
+              className="text-yellow-400 text-xl animate-pulse mb-2"
+              style={{ fontFamily: "'Courier New', monospace" }}
+            >
+              {warningText}
+            </p>
+          )}
+          <p
+            className="text-gray-400"
+            style={{ fontFamily: "'Courier New', monospace" }}
+          >
+            DODGE! Use WASD/Arrows to move your SOUL!
+          </p>
+        </div>
       )}
 
       <div
