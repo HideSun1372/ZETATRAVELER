@@ -8,7 +8,7 @@ import { Battle } from "./components/game/Battle";
 import { GameOver } from "./components/game/GameOver";
 import "@fontsource/inter";
 
-const SKIP_VESSEL_CREATION = false;
+const SKIP_VESSEL_CREATION = true;
 
 function App() {
   const gamePhase = useRPG((state) => state.gamePhase);
