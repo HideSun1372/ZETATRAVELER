@@ -17,6 +17,8 @@ export interface Enemy {
   canSpare: boolean;
 }
 
+export type PuzzleType = "simon" | "rhythm" | "misdirection";
+
 export interface Planet {
   id: number;
   name: string;
@@ -26,6 +28,12 @@ export interface Planet {
   enemiesKilled: number;
   enemiesSpared: number;
   allEnemiesCleared: boolean;
+  bossDefeated: boolean;
+  secretBossDefeated: boolean;
+  keysFound: number;
+  keysRequired: number;
+  minEnemiesRequired: number;
+  puzzleType: PuzzleType;
 }
 
 export interface Traveler {
@@ -122,19 +130,39 @@ interface RPGState {
   
   playerPosition: { x: number; y: number };
   setPlayerPosition: (pos: { x: number; y: number }) => void;
+  
+  collectKey: () => void;
+  defeatBoss: () => void;
+  defeatSecretBoss: () => void;
+  canSealCore: () => boolean;
 }
 
+const getPuzzleType = (planetId: number): PuzzleType => {
+  const types: PuzzleType[] = ["simon", "rhythm", "misdirection"];
+  return types[planetId % 3];
+};
+
 const generatePlanets = (): Planet[] => {
-  return PLANET_DATA.map((planet) => ({
-    id: planet.id,
-    name: planet.name,
-    shardsCollected: 0,
-    totalShards: Math.floor(75 / 50) + (planet.id <= 25 ? 1 : 0),
-    coreSealed: false,
-    enemiesKilled: 0,
-    enemiesSpared: 0,
-    allEnemiesCleared: false,
-  }));
+  return PLANET_DATA.map((planet) => {
+    const minEnemies = Math.min(10, 5 + Math.floor(planet.id / 10));
+    const keysRequired = planet.id <= 10 ? 1 : planet.id <= 30 ? 2 : 3;
+    return {
+      id: planet.id,
+      name: planet.name,
+      shardsCollected: 0,
+      totalShards: Math.floor(75 / 50) + (planet.id <= 25 ? 1 : 0),
+      coreSealed: false,
+      enemiesKilled: 0,
+      enemiesSpared: 0,
+      allEnemiesCleared: false,
+      bossDefeated: false,
+      secretBossDefeated: false,
+      keysFound: 0,
+      keysRequired,
+      minEnemiesRequired: minEnemies,
+      puzzleType: getPuzzleType(planet.id),
+    };
+  });
 };
 
 const initialTravelers: Traveler[] = [
@@ -305,7 +333,7 @@ export const useRPG = create<RPGState>((set, get) => ({
   sealCore: () => {
     const state = get();
     const currentPlanet = state.planets.find((p) => p.id === state.currentPlanetId);
-    if (currentPlanet && currentPlanet.allEnemiesCleared && !currentPlanet.coreSealed) {
+    if (currentPlanet && get().canSealCore() && !currentPlanet.coreSealed) {
       set({
         nebuliTotal: state.nebuliTotal + 1,
         planets: state.planets.map((p) =>
@@ -497,5 +525,49 @@ export const useRPG = create<RPGState>((set, get) => ({
       gamePhase: "hub",
       playerPosition: { x: 0, y: 0 },
     });
+  },
+  
+  collectKey: () => {
+    const state = get();
+    const currentPlanet = state.planets.find((p) => p.id === state.currentPlanetId);
+    if (currentPlanet && currentPlanet.keysFound < currentPlanet.keysRequired) {
+      set({
+        planets: state.planets.map((p) =>
+          p.id === state.currentPlanetId ? { ...p, keysFound: p.keysFound + 1 } : p
+        ),
+      });
+    }
+  },
+  
+  defeatBoss: () => {
+    const state = get();
+    set({
+      planets: state.planets.map((p) =>
+        p.id === state.currentPlanetId ? { ...p, bossDefeated: true } : p
+      ),
+    });
+  },
+  
+  defeatSecretBoss: () => {
+    const state = get();
+    set({
+      planets: state.planets.map((p) =>
+        p.id === state.currentPlanetId ? { ...p, secretBossDefeated: true } : p
+      ),
+    });
+    get().gainHope(2);
+  },
+  
+  canSealCore: () => {
+    const state = get();
+    const currentPlanet = state.planets.find((p) => p.id === state.currentPlanetId);
+    if (!currentPlanet) return false;
+    
+    const totalEnemiesDealt = currentPlanet.enemiesKilled + currentPlanet.enemiesSpared;
+    const hasEnoughEnemies = totalEnemiesDealt >= currentPlanet.minEnemiesRequired;
+    const hasAllKeys = currentPlanet.keysFound >= currentPlanet.keysRequired;
+    const bossDefeated = currentPlanet.bossDefeated;
+    
+    return hasEnoughEnemies && hasAllKeys && bossDefeated;
   },
 }));

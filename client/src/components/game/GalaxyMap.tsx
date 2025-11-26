@@ -330,6 +330,48 @@ export function GalaxyMap({ onClose, onSelectPlanet }: GalaxyMapProps) {
                           </span>
                         </div>
                       )}
+                      <div className="flex justify-between">
+                        <span className="text-gray-400" style={{ fontFamily: "'Courier New', monospace" }}>
+                          Keys:
+                        </span>
+                        <span className="text-yellow-400" style={{ fontFamily: "'Courier New', monospace" }}>
+                          {selectedPlanetState?.keysFound || 0}/{selectedPlanetData.keysRequired}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400" style={{ fontFamily: "'Courier New', monospace" }}>
+                          Enemies:
+                        </span>
+                        <span className="text-red-400" style={{ fontFamily: "'Courier New', monospace" }}>
+                          {selectedPlanetData.minEnemiesRequired}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400" style={{ fontFamily: "'Courier New', monospace" }}>
+                          Boss:
+                        </span>
+                        <span className={`${selectedPlanetState?.bossDefeated ? 'text-green-400' : 'text-orange-400'}`} style={{ fontFamily: "'Courier New', monospace" }}>
+                          {selectedPlanetState?.bossDefeated ? "✓" : selectedPlanetData.boss.name}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400" style={{ fontFamily: "'Courier New', monospace" }}>
+                          Puzzle:
+                        </span>
+                        <span className="text-cyan-400" style={{ fontFamily: "'Courier New', monospace" }}>
+                          {selectedPlanetData.puzzleType.toUpperCase()}
+                        </span>
+                      </div>
+                      {selectedPlanetData.secretBoss && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-400" style={{ fontFamily: "'Courier New', monospace" }}>
+                            Secret:
+                          </span>
+                          <span className={`${selectedPlanetState?.secretBossDefeated ? 'text-green-400' : 'text-purple-400'}`} style={{ fontFamily: "'Courier New', monospace" }}>
+                            {selectedPlanetState?.secretBossDefeated ? "✓ FOUND" : "???"}
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     <p
@@ -344,10 +386,10 @@ export function GalaxyMap({ onClose, onSelectPlanet }: GalaxyMapProps) {
                         className="text-gray-400 text-xs mb-2"
                         style={{ fontFamily: "'Courier New', monospace" }}
                       >
-                        ENEMIES:
+                        ENEMIES ({selectedPlanetData.enemies.length} types):
                       </p>
                       <div className="space-y-1">
-                        {selectedPlanetData.enemies.map((enemy) => (
+                        {selectedPlanetData.enemies.slice(0, 3).map((enemy) => (
                           <div key={enemy.name} className="flex items-center gap-2">
                             <div
                               className="w-2 h-2 rounded-full"
@@ -361,6 +403,11 @@ export function GalaxyMap({ onClose, onSelectPlanet }: GalaxyMapProps) {
                             </span>
                           </div>
                         ))}
+                        {selectedPlanetData.enemies.length > 3 && (
+                          <span className="text-gray-500 text-xs" style={{ fontFamily: "'Courier New', monospace" }}>
+                            +{selectedPlanetData.enemies.length - 3} more...
+                          </span>
+                        )}
                       </div>
                     </div>
                   </>

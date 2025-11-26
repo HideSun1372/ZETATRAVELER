@@ -9,6 +9,13 @@ interface Shard {
   collected: boolean;
 }
 
+interface Key {
+  id: number;
+  x: number;
+  y: number;
+  collected: boolean;
+}
+
 interface EnemySpawn {
   id: string;
   name: string;
@@ -20,6 +27,8 @@ interface EnemySpawn {
   defeated: boolean;
   color: string;
   spareDialogue: string[];
+  isBoss?: boolean;
+  isSecretBoss?: boolean;
 }
 
 const TILE_SIZE = 32;
@@ -42,17 +51,24 @@ export function Planet() {
     nebuliShards,
     defeatedEnemyIds,
     sealCore,
+    collectKey,
+    defeatBoss,
+    defeatSecretBoss,
+    canSealCore,
   } = useRPG();
 
   const currentPlanet = planets.find((p) => p.id === currentPlanetId);
   const planetTheme = getPlanetById(currentPlanetId);
   
   const [shards, setShards] = useState<Shard[]>([]);
+  const [keys, setKeys] = useState<Key[]>([]);
   const [enemies, setEnemies] = useState<EnemySpawn[]>([]);
   const [showExitPrompt, setShowExitPrompt] = useState(false);
   const [showSealPrompt, setShowSealPrompt] = useState(false);
   const [planetSealed, setPlanetSealed] = useState(false);
   const [showVictory, setShowVictory] = useState(false);
+  const [bossSpawned, setBossSpawned] = useState(false);
+  const [secretBossSpawned, setSecretBossSpawned] = useState(false);
   
   const [puzzleActive, setPuzzleActive] = useState(false);
   const [puzzleSequence, setPuzzleSequence] = useState<string[]>([]);
@@ -108,9 +124,22 @@ export function Planet() {
     }
     setShards(newShards);
 
+    const keyCount = planetTheme?.keysRequired || currentPlanet?.keysRequired || 1;
+    const newKeys: Key[] = [];
+    for (let i = 0; i < keyCount; i++) {
+      newKeys.push({
+        id: i,
+        x: Math.floor(random(i * 2 + 500) * (MAP_WIDTH - 4)) + 2,
+        y: Math.floor(random(i * 2 + 501) * (MAP_HEIGHT - 4)) + 2,
+        collected: false,
+      });
+    }
+    setKeys(newKeys);
+
+    const enemyCount = currentPlanet?.minEnemiesRequired || 5;
     const newEnemies: EnemySpawn[] = [];
     const planetEnemies = planetTheme?.enemies || [];
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < enemyCount; i++) {
       const enemyData = planetEnemies[i % planetEnemies.length];
       if (enemyData) {
         newEnemies.push({
@@ -151,6 +180,15 @@ export function Planet() {
       }
     }
 
+    for (const key of keys) {
+      if (!key.collected && Math.abs(tileX - key.x) < 1 && Math.abs(tileY - key.y) < 1) {
+        setKeys((prev) =>
+          prev.map((k) => (k.id === key.id ? { ...k, collected: true } : k))
+        );
+        collectKey();
+      }
+    }
+
     for (const enemy of enemies) {
       const isDefeated = defeatedEnemyIds.includes(enemy.id);
       if (!isDefeated && Math.abs(tileX - enemy.x) < 1 && Math.abs(tileY - enemy.y) < 1) {
@@ -166,8 +204,16 @@ export function Planet() {
           talkProgress: 0,
           canSpare: false,
         };
-        startBattle(battleEnemy);
-        return;
+        if (enemy.isBoss) {
+          startBattle(battleEnemy);
+          return;
+        } else if (enemy.isSecretBoss) {
+          startBattle(battleEnemy);
+          return;
+        } else {
+          startBattle(battleEnemy);
+          return;
+        }
       }
     }
 
@@ -175,11 +221,85 @@ export function Planet() {
       setShowExitPrompt(true);
     }
     
-    if (allEnemiesDefeated && !planetSealed &&
+    if (canSealCore() && !planetSealed &&
         Math.abs(tileX - CORE_POSITION.x) < 1 && Math.abs(tileY - CORE_POSITION.y) < 1) {
       setShowSealPrompt(true);
     }
   };
+
+  const regularEnemiesDefeated = enemies.filter(e => !e.isBoss && !e.isSecretBoss).every(e => defeatedEnemyIds.includes(e.id));
+  const allKeysCollected = keys.every(k => k.collected);
+  const canSpawnBoss = regularEnemiesDefeated && allKeysCollected && !bossSpawned && !currentPlanet?.bossDefeated;
+
+  useEffect(() => {
+    if (canSpawnBoss && planetTheme?.boss) {
+      const boss = planetTheme.boss;
+      const newBoss: EnemySpawn = {
+        id: `boss-${currentPlanetId}`,
+        name: boss.name,
+        x: CORE_POSITION.x + 2,
+        y: CORE_POSITION.y,
+        hp: boss.hp,
+        atk: boss.atk,
+        def: boss.def,
+        defeated: false,
+        color: boss.color,
+        spareDialogue: boss.spareDialogue,
+        isBoss: true,
+      };
+      setEnemies(prev => [...prev, newBoss]);
+      setBossSpawned(true);
+    }
+  }, [canSpawnBoss, planetTheme, currentPlanetId]);
+
+  useEffect(() => {
+    const bossId = `boss-${currentPlanetId}`;
+    const bossEnemy = enemies.find(e => e.id === bossId);
+    if (bossEnemy && defeatedEnemyIds.includes(bossId) && !currentPlanet?.bossDefeated) {
+      defeatBoss();
+    }
+  }, [defeatedEnemyIds, enemies, currentPlanetId, currentPlanet?.bossDefeated]);
+
+  useEffect(() => {
+    const secretBossId = `secretboss-${currentPlanetId}`;
+    const secretBoss = enemies.find(e => e.id === secretBossId);
+    if (secretBoss && defeatedEnemyIds.includes(secretBossId) && !currentPlanet?.secretBossDefeated) {
+      defeatSecretBoss();
+    }
+  }, [defeatedEnemyIds, enemies, currentPlanetId, currentPlanet?.secretBossDefeated]);
+
+  const allShardsAndKeysCollected = shards.every(s => s.collected) && keys.every(k => k.collected);
+  const canSpawnSecretBoss = currentPlanet?.bossDefeated && allShardsAndKeysCollected && 
+    !secretBossSpawned && !currentPlanet?.secretBossDefeated && planetTheme?.secretBoss;
+
+  useEffect(() => {
+    if (canSpawnSecretBoss && planetTheme?.secretBoss) {
+      const secretBoss = planetTheme.secretBoss;
+      const secretX = Math.floor(MAP_WIDTH * 0.8);
+      const secretY = Math.floor(MAP_HEIGHT * 0.2);
+      const newSecretBoss: EnemySpawn = {
+        id: `secretboss-${currentPlanetId}`,
+        name: secretBoss.name,
+        x: secretX,
+        y: secretY,
+        hp: secretBoss.hp,
+        atk: secretBoss.atk,
+        def: secretBoss.def,
+        defeated: false,
+        color: secretBoss.color,
+        spareDialogue: secretBoss.spareDialogue,
+        isSecretBoss: true,
+      };
+      setEnemies(prev => [...prev, newSecretBoss]);
+      setSecretBossSpawned(true);
+    }
+  }, [canSpawnSecretBoss, planetTheme, currentPlanetId]);
+
+  const puzzleType = planetTheme?.puzzleType || "simon";
+  const [puzzleStrikes, setPuzzleStrikes] = useState(0);
+  const [rhythmBeat, setRhythmBeat] = useState(0);
+  const [rhythmTargetBeat, setRhythmTargetBeat] = useState(0);
+  const [misdirectionDecoy, setMisdirectionDecoy] = useState<string[]>([]);
   
   const generatePuzzleSequence = () => {
     const directions = ["up", "down", "left", "right"];
@@ -190,12 +310,25 @@ export function Planet() {
     for (let i = 0; i < length; i++) {
       sequence.push(directions[Math.floor(Math.random() * directions.length)]);
     }
+    
+    if (puzzleType === "misdirection") {
+      const decoys: string[] = [];
+      for (let i = 0; i < length; i++) {
+        const wrongDir = directions.filter(d => d !== sequence[i]);
+        decoys.push(wrongDir[Math.floor(Math.random() * wrongDir.length)]);
+      }
+      setMisdirectionDecoy(decoys);
+    }
+    
     return sequence;
   };
 
   const startPuzzle = () => {
     setShowSealPrompt(false);
     setPuzzleActive(true);
+    setPuzzleStrikes(0);
+    setRhythmBeat(0);
+    setRhythmTargetBeat(0);
     const sequence = generatePuzzleSequence();
     setPuzzleSequence(sequence);
     setPlayerInput([]);
@@ -228,17 +361,77 @@ export function Planet() {
   const handlePuzzleInput = (direction: string) => {
     if (puzzlePhase !== "input") return;
     
+    if (puzzleType === "rhythm") {
+      const isOnBeat = rhythmBeat >= 6 || rhythmBeat <= 1;
+      const currentTargetIndex = playerInput.length;
+      const isCorrectDir = direction === puzzleSequence[currentTargetIndex];
+      
+      if (!isOnBeat) {
+        setPuzzlePhase("fail");
+        setTimeout(() => {
+          setPlayerInput([]);
+          setRhythmBeat(0);
+          setRhythmTargetBeat(0);
+          setPuzzlePhase("showing");
+          setPuzzleShowIndex(0);
+        }, 1000);
+        return;
+      }
+      
+      if (!isCorrectDir) {
+        setPuzzlePhase("fail");
+        setTimeout(() => {
+          setPlayerInput([]);
+          setRhythmBeat(0);
+          setRhythmTargetBeat(0);
+          setPuzzlePhase("showing");
+          setPuzzleShowIndex(0);
+        }, 1000);
+        return;
+      }
+      
+      const newInput = [...playerInput, direction];
+      setPlayerInput(newInput);
+      
+      if (newInput.length === puzzleSequence.length) {
+        setPuzzlePhase("success");
+        setTimeout(() => {
+          completeSeal();
+        }, 1000);
+      }
+      return;
+    }
+    
     const newInput = [...playerInput, direction];
     setPlayerInput(newInput);
     
-    if (newInput[newInput.length - 1] !== puzzleSequence[newInput.length - 1]) {
-      setPuzzlePhase("fail");
-      setTimeout(() => {
-        setPlayerInput([]);
-        setPuzzlePhase("showing");
-        setPuzzleShowIndex(0);
-      }, 1000);
-      return;
+    const isCorrect = newInput[newInput.length - 1] === puzzleSequence[newInput.length - 1];
+    
+    if (!isCorrect) {
+      if (puzzleType === "simon") {
+        const newStrikes = puzzleStrikes + 1;
+        setPuzzleStrikes(newStrikes);
+        if (newStrikes >= 3) {
+          setPuzzlePhase("fail");
+          setTimeout(() => {
+            setPlayerInput([]);
+            setPuzzleStrikes(0);
+            setPuzzlePhase("showing");
+            setPuzzleShowIndex(0);
+          }, 1500);
+        } else {
+          setPlayerInput(playerInput);
+        }
+        return;
+      } else {
+        setPuzzlePhase("fail");
+        setTimeout(() => {
+          setPlayerInput([]);
+          setPuzzlePhase("showing");
+          setPuzzleShowIndex(0);
+        }, 1000);
+        return;
+      }
     }
     
     if (newInput.length === puzzleSequence.length) {
@@ -248,6 +441,21 @@ export function Planet() {
       }, 1000);
     }
   };
+  
+  useEffect(() => {
+    if (puzzleType === "rhythm" && puzzlePhase === "input") {
+      const beatInterval = setInterval(() => {
+        setRhythmBeat(prev => {
+          const newBeat = (prev + 1) % 8;
+          if (newBeat === 0) {
+            setRhythmTargetBeat(t => (t + 1) % puzzleSequence.length);
+          }
+          return newBeat;
+        });
+      }, 300);
+      return () => clearInterval(beatInterval);
+    }
+  }, [puzzleType, puzzlePhase, puzzleSequence.length]);
 
   useEffect(() => {
     if (puzzlePhase === "showing" && puzzleActive) {
@@ -440,22 +648,46 @@ export function Planet() {
           ) : null
         )}
 
+        {keys.map((key) =>
+          !key.collected ? (
+            <div
+              key={`key-${key.id}`}
+              className="absolute animate-bounce"
+              style={{
+                left: key.x * TILE_SIZE + 6,
+                top: key.y * TILE_SIZE + 4,
+                width: TILE_SIZE - 12,
+                height: TILE_SIZE - 8,
+                backgroundColor: "#FFD700",
+                borderRadius: "4px",
+                boxShadow: "0 0 12px #FFD700",
+                border: "2px solid #FFA500",
+              }}
+            />
+          ) : null
+        )}
+
         {enemies.map((enemy) => {
           const isDefeated = defeatedEnemyIds.includes(enemy.id);
+          const isBossEnemy = enemy.isBoss || enemy.isSecretBoss;
           return !isDefeated ? (
             <div
               key={enemy.id}
-              className="absolute flex items-center justify-center"
+              className={`absolute flex items-center justify-center ${isBossEnemy ? 'animate-pulse' : ''}`}
               style={{
-                left: enemy.x * TILE_SIZE,
-                top: enemy.y * TILE_SIZE,
-                width: TILE_SIZE,
-                height: TILE_SIZE,
+                left: enemy.x * TILE_SIZE - (isBossEnemy ? TILE_SIZE/2 : 0),
+                top: enemy.y * TILE_SIZE - (isBossEnemy ? TILE_SIZE/2 : 0),
+                width: isBossEnemy ? TILE_SIZE * 2 : TILE_SIZE,
+                height: isBossEnemy ? TILE_SIZE * 2 : TILE_SIZE,
                 backgroundColor: enemy.color || "#FF0000",
-                boxShadow: `0 0 8px ${enemy.color || "#FF0000"}`,
+                boxShadow: `0 0 ${isBossEnemy ? '16px' : '8px'} ${enemy.color || "#FF0000"}`,
+                border: isBossEnemy ? '3px solid #FFD700' : 'none',
+                zIndex: isBossEnemy ? 10 : 1,
               }}
             >
-              <span className="text-xs text-white font-bold">!</span>
+              <span className={`text-white font-bold ${isBossEnemy ? 'text-lg' : 'text-xs'}`}>
+                {isBossEnemy ? '★' : '!'}
+              </span>
             </div>
           ) : null;
         })}
@@ -545,11 +777,33 @@ export function Planet() {
           >
             <div className="bg-black border-4 border-cyan-400 p-8 text-center min-w-[400px]">
               <p
-                className="text-cyan-400 text-2xl mb-4"
+                className="text-cyan-400 text-2xl mb-2"
                 style={{ fontFamily: "'Courier New', monospace" }}
               >
                 CORE ALIGNMENT
               </p>
+              <p
+                className="text-gray-500 text-sm mb-4"
+                style={{ fontFamily: "'Courier New', monospace" }}
+              >
+                {puzzleType === "simon" ? "SIMON MODE - 3 Strikes Allowed" : 
+                 puzzleType === "rhythm" ? "RHYTHM MODE - Time Your Inputs" :
+                 "MISDIRECTION MODE - Ignore The Decoys"}
+              </p>
+              
+              {puzzleType === "simon" && puzzlePhase === "input" && (
+                <div className="flex justify-center gap-2 mb-4">
+                  {[0, 1, 2].map(i => (
+                    <div
+                      key={i}
+                      className={`w-4 h-4 rounded-full ${i < puzzleStrikes ? 'bg-red-500' : 'bg-gray-600'}`}
+                    />
+                  ))}
+                  <span className="text-red-400 ml-2 text-sm" style={{ fontFamily: "'Courier New', monospace" }}>
+                    {3 - puzzleStrikes} strikes left
+                  </span>
+                </div>
+              )}
               
               {puzzlePhase === "showing" && (
                 <div>
@@ -557,30 +811,40 @@ export function Planet() {
                     className="text-white text-lg mb-6"
                     style={{ fontFamily: "'Courier New', monospace" }}
                   >
-                    Memorize the sequence...
+                    {puzzleType === "misdirection" ? "Remember the GLOWING directions..." : "Memorize the sequence..."}
                   </p>
                   <div className="flex justify-center gap-4 mb-4">
                     {puzzleSequence.map((dir, i) => {
                       const isCurrentlyShowing = i === puzzleShowIndex - 1;
                       const isRevealed = i < puzzleShowIndex;
+                      const decoyDir = misdirectionDecoy[i];
                       return (
-                        <div
-                          key={i}
-                          className={`w-16 h-16 border-4 flex items-center justify-center text-3xl transition-all duration-300 ${
-                            isCurrentlyShowing 
-                              ? "border-yellow-400 bg-yellow-900 text-yellow-300 scale-125 shadow-lg shadow-yellow-400/50" 
-                              : isRevealed
-                                ? "border-cyan-400 bg-cyan-900 text-cyan-300" 
-                                : "border-gray-700 text-gray-700 bg-gray-900"
-                          }`}
-                          style={{ 
-                            fontFamily: "'Courier New', monospace",
-                            transform: isCurrentlyShowing ? 'scale(1.25)' : 'scale(1)',
-                          }}
-                        >
-                          {isRevealed ? (
-                            dir === "up" ? "↑" : dir === "down" ? "↓" : dir === "left" ? "←" : "→"
-                          ) : "?"}
+                        <div key={i} className="relative">
+                          {puzzleType === "misdirection" && isCurrentlyShowing && decoyDir && (
+                            <div
+                              className="absolute -top-8 left-1/2 -translate-x-1/2 text-red-500 text-xl opacity-60 animate-pulse"
+                              style={{ fontFamily: "'Courier New', monospace" }}
+                            >
+                              {decoyDir === "up" ? "↑" : decoyDir === "down" ? "↓" : decoyDir === "left" ? "←" : "→"}
+                            </div>
+                          )}
+                          <div
+                            className={`w-16 h-16 border-4 flex items-center justify-center text-3xl transition-all duration-300 ${
+                              isCurrentlyShowing 
+                                ? "border-yellow-400 bg-yellow-900 text-yellow-300 scale-125 shadow-lg shadow-yellow-400/50" 
+                                : isRevealed
+                                  ? "border-cyan-400 bg-cyan-900 text-cyan-300" 
+                                  : "border-gray-700 text-gray-700 bg-gray-900"
+                            }`}
+                            style={{ 
+                              fontFamily: "'Courier New', monospace",
+                              transform: isCurrentlyShowing ? 'scale(1.25)' : 'scale(1)',
+                            }}
+                          >
+                            {isRevealed ? (
+                              dir === "up" ? "↑" : dir === "down" ? "↓" : dir === "left" ? "←" : "→"
+                            ) : "?"}
+                          </div>
                         </div>
                       );
                     })}
@@ -597,19 +861,44 @@ export function Planet() {
               {puzzlePhase === "input" && (
                 <div>
                   <p
-                    className="text-yellow-400 text-lg mb-6"
+                    className="text-yellow-400 text-lg mb-4"
                     style={{ fontFamily: "'Courier New', monospace" }}
                   >
                     Enter the sequence!
                   </p>
+                  
+                  {puzzleType === "rhythm" && (
+                    <div className="mb-4">
+                      <div className="flex justify-center gap-1 mb-2">
+                        {[0, 1, 2, 3, 4, 5, 6, 7].map(i => (
+                          <div
+                            key={i}
+                            className={`w-6 h-6 rounded ${
+                              i === rhythmBeat 
+                                ? 'bg-yellow-400 shadow-lg shadow-yellow-400/50' 
+                                : i < rhythmBeat ? 'bg-cyan-600' : 'bg-gray-700'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                      <p className="text-cyan-400 text-xs" style={{ fontFamily: "'Courier New', monospace" }}>
+                        Input on beat {rhythmTargetBeat + 1}: {puzzleSequence[rhythmTargetBeat]}
+                      </p>
+                    </div>
+                  )}
+                  
                   <div className="flex justify-center gap-4 mb-4">
                     {puzzleSequence.map((dir, i) => (
                       <div
                         key={i}
                         className={`w-16 h-16 border-2 flex items-center justify-center text-2xl ${
                           i < playerInput.length 
-                            ? "border-green-400 bg-green-900 text-green-300" 
-                            : "border-gray-600 text-gray-600"
+                            ? playerInput[i] === puzzleSequence[i]
+                              ? "border-green-400 bg-green-900 text-green-300" 
+                              : "border-red-400 bg-red-900 text-red-300"
+                            : puzzleType === "rhythm" && i === rhythmTargetBeat
+                              ? "border-yellow-400 bg-yellow-900/50 text-yellow-300 animate-pulse"
+                              : "border-gray-600 text-gray-600"
                         }`}
                         style={{ fontFamily: "'Courier New', monospace" }}
                       >
@@ -689,7 +978,7 @@ export function Planet() {
       </div>
 
       <div
-        className="mt-4 flex gap-8 text-white"
+        className="mt-4 flex flex-wrap gap-6 text-white justify-center"
         style={{ fontFamily: "'Courier New', monospace" }}
       >
         <div>
@@ -703,18 +992,31 @@ export function Planet() {
           {shards.filter((s) => s.collected).length}/{shards.length}
         </div>
         <div>
+          <span className="text-yellow-400">KEYS:</span>{" "}
+          {keys.filter((k) => k.collected).length}/{keys.length}
+        </div>
+        <div>
           <span className="text-red-400">ENEMIES:</span>{" "}
-          {enemies.filter((e) => defeatedEnemyIds.includes(e.id)).length}/{enemies.length}
+          {enemies.filter((e) => !e.isBoss && !e.isSecretBoss && defeatedEnemyIds.includes(e.id)).length}/
+          {enemies.filter((e) => !e.isBoss && !e.isSecretBoss).length}
+        </div>
+        <div>
+          <span className="text-orange-400">BOSS:</span>{" "}
+          {currentPlanet?.bossDefeated ? "✓" : bossSpawned ? "ACTIVE" : "LOCKED"}
         </div>
       </div>
 
       <div
-        className="mt-2 text-gray-500 text-sm"
+        className="mt-2 text-gray-500 text-sm text-center max-w-lg"
         style={{ fontFamily: "'Courier New', monospace" }}
       >
-        {allEnemiesDefeated && !planetSealed 
-          ? "All enemies defeated! Find the golden CORE to seal this planet!"
-          : "Collect shards | Defeat or spare all enemies | Left edge to exit"
+        {currentPlanet?.bossDefeated && !planetSealed 
+          ? "Boss defeated! Find the golden CORE to seal this planet!"
+          : bossSpawned
+            ? "The BOSS has appeared! Defeat it to unlock the core!"
+            : regularEnemiesDefeated && allKeysCollected
+              ? "All enemies cleared and keys collected! The BOSS approaches..."
+              : `Collect ${keys.length} keys | Defeat ${enemies.filter(e => !e.isBoss).length} enemies | Find the boss`
         }
       </div>
     </div>

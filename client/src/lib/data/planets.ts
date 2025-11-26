@@ -1,4 +1,6 @@
-export interface PlanetTheme {
+export type PuzzleType = "simon" | "rhythm" | "misdirection";
+
+interface RawPlanetTheme {
   id: number;
   name: string;
   biome: string;
@@ -9,6 +11,18 @@ export interface PlanetTheme {
   region: string;
   description: string;
   enemies: PlanetEnemy[];
+  boss?: PlanetEnemy;
+  secretBoss?: PlanetEnemy;
+  puzzleType?: PuzzleType;
+  minEnemiesRequired?: number;
+  keysRequired?: number;
+}
+
+export interface PlanetTheme extends RawPlanetTheme {
+  boss: PlanetEnemy;
+  puzzleType: PuzzleType;
+  minEnemiesRequired: number;
+  keysRequired: number;
 }
 
 export type AttackPattern = 
@@ -26,7 +40,93 @@ export interface PlanetEnemy {
   attackPattern?: AttackPattern;
 }
 
-export const PLANET_DATA: PlanetTheme[] = [
+const REGION_BOSS_DATA: Record<string, { names: string[]; patterns: AttackPattern[] }> = {
+  "Verdant Cluster": { names: ["GUARDIAN", "TITAN", "OVERLORD", "ANCIENT", "EMPEROR"], patterns: ["spiral", "orbit", "wave", "scatter", "pulse"] },
+  "Frozen Expanse": { names: ["WYRM", "COLOSSUS", "MONARCH", "FROST LORD", "ICE KING"], patterns: ["sides", "sweep", "barrage", "rain", "cross"] },
+  "Inferno Sector": { names: ["IFRIT", "OVERLORD", "INFERNAL", "BLAZE LORD", "MAGMA KING"], patterns: ["burst", "cross", "scatter", "vortex", "barrage"] },
+  "Void Realm": { names: ["ARCHON", "PARADOX", "NULL KING", "SHADE LORD", "VOID EMPEROR"], patterns: ["vortex", "zigzag", "split", "chase", "pulse"] },
+  "Celestial Heights": { names: ["SERAPH", "AVATAR", "CONDUCTOR", "ASTRAL LORD", "CELESTIAL KING"], patterns: ["aimed", "pulse", "barrage", "spiral", "orbit"] },
+};
+
+const darkenColor = (color: string, amount: number = 0.3): string => {
+  const hex = color.replace("#", "");
+  const r = Math.max(0, parseInt(hex.slice(0, 2), 16) - Math.floor(255 * amount));
+  const g = Math.max(0, parseInt(hex.slice(2, 4), 16) - Math.floor(255 * amount));
+  const b = Math.max(0, parseInt(hex.slice(4, 6), 16) - Math.floor(255 * amount));
+  return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+};
+
+const generateBoss = (planet: RawPlanetTheme): PlanetEnemy => {
+  const regionData = REGION_BOSS_DATA[planet.region] || REGION_BOSS_DATA["Verdant Cluster"];
+  const nameIndex = planet.id % regionData.names.length;
+  const patternIndex = planet.id % regionData.patterns.length;
+  
+  const biomeWord = planet.biome.split(" ")[0].toUpperCase();
+  const bossName = `${biomeWord} ${regionData.names[nameIndex]}`;
+  
+  const baseHp = 80 + 20 * (planet.difficulty - 1);
+  const baseAtk = 12 + 4 * planet.difficulty;
+  const baseDef = 8 + 3 * planet.difficulty;
+  
+  return {
+    name: bossName,
+    hp: baseHp + (planet.id % 20),
+    atk: baseAtk + (planet.id % 5),
+    def: baseDef + (planet.id % 4),
+    color: darkenColor(planet.primaryColor),
+    spareDialogue: [
+      `${bossName}'s fury subsides.`,
+      "Ancient power recognizes your spirit.",
+      "You have earned passage.",
+    ],
+    attackPattern: regionData.patterns[patternIndex],
+  };
+};
+
+const generateSecretBoss = (planet: RawPlanetTheme): PlanetEnemy | undefined => {
+  if (planet.id % 10 !== 0) return undefined;
+  
+  const baseBoss = generateBoss(planet);
+  return {
+    name: `OMEGA ${baseBoss.name}`,
+    hp: Math.floor(baseBoss.hp * 1.5),
+    atk: Math.floor(baseBoss.atk * 1.3),
+    def: Math.floor(baseBoss.def * 1.3),
+    color: darkenColor(planet.secondaryColor),
+    spareDialogue: [
+      `The OMEGA ${baseBoss.name} transcends.`,
+      "Ultimate power... at peace.",
+      "You have proven worthy of the stars.",
+    ],
+    attackPattern: "vortex",
+  };
+};
+
+const getPuzzleType = (planetId: number): PuzzleType => {
+  const puzzleTypes: PuzzleType[] = ["simon", "rhythm", "misdirection"];
+  return puzzleTypes[planetId % 3];
+};
+
+const getMinEnemies = (difficulty: number): number => {
+  return 4 + difficulty;
+};
+
+const getKeysRequired = (difficulty: number): number => {
+  return Math.min(1 + Math.floor(difficulty / 2), 3);
+};
+
+const ensureBosses = (planets: RawPlanetTheme[]): PlanetTheme[] => {
+  return planets.map((planet) => ({
+    ...planet,
+    boss: planet.boss || generateBoss(planet),
+    secretBoss: planet.secretBoss || generateSecretBoss(planet),
+    puzzleType: planet.puzzleType || getPuzzleType(planet.id),
+    minEnemiesRequired: planet.minEnemiesRequired || getMinEnemies(planet.difficulty),
+    keysRequired: planet.keysRequired || getKeysRequired(planet.difficulty),
+  }));
+};
+
+const RAW_PLANET_DATA: RawPlanetTheme[] = [
   // REGION 1: VERDANT CLUSTER (Planets 1-10) - Easy
   {
     id: 1,
@@ -43,6 +143,8 @@ export const PLANET_DATA: PlanetTheme[] = [
       { name: "MOSS SPRITE", hp: 12, atk: 4, def: 3, color: "#27AE60", spareDialogue: ["The Moss Sprite hums softly.", "It's calming down."] },
       { name: "THORNBACK", hp: 20, atk: 7, def: 4, color: "#1E8449", spareDialogue: ["Thornback retracts its spines.", "It doesn't want to fight."] },
     ],
+    boss: { name: "ELDER TREANT", hp: 80, atk: 12, def: 8, color: "#1B5E20", spareDialogue: ["The Elder Treant's rage subsides.", "Ancient wisdom returns.", "It grants you passage."], attackPattern: "spiral" },
+    secretBoss: { name: "FOREST HEART", hp: 120, atk: 15, def: 10, color: "#00E676", spareDialogue: ["The Forest Heart pulses gently.", "Nature recognizes your spirit.", "You are blessed."], attackPattern: "vortex" },
   },
   {
     id: 2,
@@ -59,6 +161,7 @@ export const PLANET_DATA: PlanetTheme[] = [
       { name: "BLOOMWARDEN", hp: 18, atk: 5, def: 5, color: "#F48FB1", spareDialogue: ["Bloomwarden lowers its guard.", "The flowers calm it."] },
       { name: "NECTAR BEE", hp: 10, atk: 8, def: 1, color: "#FFC107", spareDialogue: ["Nectar Bee buzzes happily.", "It found what it needed."] },
     ],
+    boss: { name: "QUEEN BLOSSOM", hp: 85, atk: 13, def: 7, color: "#AD1457", spareDialogue: ["Queen Blossom's petals soften.", "The garden accepts you.", "Beauty in mercy."], attackPattern: "burst" },
   },
   {
     id: 3,
@@ -75,6 +178,7 @@ export const PLANET_DATA: PlanetTheme[] = [
       { name: "FUNGAL KNIGHT", hp: 22, atk: 7, def: 5, color: "#7B1FA2", spareDialogue: ["Fungal Knight sheathes its weapon.", "Honor is satisfied."] },
       { name: "MYCONID", hp: 18, atk: 6, def: 4, color: "#CE93D8", spareDialogue: ["Myconid nods slowly.", "It understands."] },
     ],
+    boss: { name: "SPOREMAESTRO", hp: 90, atk: 11, def: 10, color: "#6A1B9A", spareDialogue: ["Sporemaestro's glow dims peacefully.", "The network accepts you.", "You are one with fungi."], attackPattern: "pulse" },
   },
   {
     id: 4,
@@ -91,6 +195,7 @@ export const PLANET_DATA: PlanetTheme[] = [
       { name: "PUDDLEJUMP", hp: 12, atk: 6, def: 2, color: "#80DEEA", spareDialogue: ["Puddlejump hops away.", "It lost interest."] },
       { name: "MISTWALKER", hp: 20, atk: 7, def: 4, color: "#006064", spareDialogue: ["Mistwalker fades slightly.", "It means no harm."] },
     ],
+    boss: { name: "STORM SERPENT", hp: 88, atk: 14, def: 6, color: "#00838F", spareDialogue: ["Storm Serpent coils peacefully.", "The rain calms.", "Thunder becomes silence."], attackPattern: "rain" },
   },
   {
     id: 5,
@@ -107,6 +212,7 @@ export const PLANET_DATA: PlanetTheme[] = [
       { name: "ANCIENT APE", hp: 24, atk: 8, def: 5, color: "#795548", spareDialogue: ["Ancient Ape beats its chest.", "Respect earned."] },
       { name: "JUNGLE WISP", hp: 10, atk: 5, def: 2, color: "#81C784", spareDialogue: ["Jungle Wisp floats peacefully.", "It guides the way."] },
     ],
+    boss: { name: "PRIMORDIAL TITAN", hp: 95, atk: 15, def: 9, color: "#1B5E20", spareDialogue: ["Primordial Titan kneels.", "Ancient respect earned.", "The jungle bows."], attackPattern: "scatter" },
   },
   {
     id: 6,
@@ -835,8 +941,12 @@ export const PLANET_DATA: PlanetTheme[] = [
       { name: "CORE SENTINEL", hp: 90, atk: 33, def: 17, color: "#FFF176", spareDialogue: ["Core Sentinel deactivates.", "Mission complete."] },
       { name: "PRIME AVATAR", hp: 100, atk: 35, def: 20, color: "#FFC400", spareDialogue: ["Prime Avatar smiles.", "You've arrived. Well done."] },
     ],
+    boss: { name: "THE ZETATRON", hp: 200, atk: 40, def: 25, color: "#B8860B", spareDialogue: ["THE ZETATRON powers down.", "The galaxy is at peace.", "Your journey is complete. Thank you, Traveler."], attackPattern: "vortex" },
+    secretBoss: { name: "OMEGA ZETATRON", hp: 300, atk: 50, def: 30, color: "#DAA520", spareDialogue: ["OMEGA ZETATRON transcends reality.", "You have mastered the cosmos.", "The true ending awaits..."], attackPattern: "barrage" },
   },
 ];
+
+export const PLANET_DATA: PlanetTheme[] = ensureBosses(RAW_PLANET_DATA);
 
 export const getRegions = () => {
   const regions = new Map<string, PlanetTheme[]>();

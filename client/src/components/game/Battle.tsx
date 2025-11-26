@@ -60,6 +60,10 @@ export function Battle() {
   const actOptions = ["Check", "Talk", "Flirt"];
   const healingItems = inventory.filter((i) => i.type === "healing");
 
+  const isBoss = currentEnemy && currentEnemy.maxHp >= 80;
+  const isSecretBoss = currentEnemy && currentEnemy.maxHp >= 120;
+  const bossPhase = currentEnemy ? (currentEnemy.hp <= currentEnemy.maxHp * 0.5 ? 2 : 1) : 1;
+
   const getEnemyPattern = useCallback((): string => {
     if (!currentEnemy) return "rain";
     const name = currentEnemy.name.toUpperCase();
@@ -105,10 +109,13 @@ export function Battle() {
   const spawnBullets = useCallback((patternOverride?: string) => {
     const newBullets: Bullet[] = [];
     const pattern = patternOverride || getEnemyPattern();
-    const speed = 2.5 + (currentEnemy?.atk || 5) / 10;
+    const baseSpeed = 2.5 + (currentEnemy?.atk || 5) / 10;
+    const speed = isBoss ? baseSpeed * (bossPhase === 2 ? 1.4 : 1.2) : baseSpeed;
+    const bulletMultiplier = isBoss ? (bossPhase === 2 ? 1.5 : 1.25) : 1;
 
     if (pattern === "rain") {
-      for (let i = 0; i < 8; i++) {
+      const count = Math.floor(8 * bulletMultiplier);
+      for (let i = 0; i < count; i++) {
         newBullets.push({
           id: bulletIdRef.current++,
           x: Math.random() * ARENA_WIDTH,
@@ -364,7 +371,16 @@ export function Battle() {
     }
 
     setBullets((prev) => [...prev, ...newBullets]);
-  }, [soulPosition, currentEnemy, getEnemyPattern]);
+    
+    if (isBoss && bossPhase === 2 && !patternOverride) {
+      const secondPattern = ["spiral", "rain", "barrage", "vortex"][Math.floor(Math.random() * 4)];
+      if (secondPattern !== pattern) {
+        setTimeout(() => {
+          spawnBullets(secondPattern);
+        }, 300);
+      }
+    }
+  }, [soulPosition, currentEnemy, getEnemyPattern, isBoss, bossPhase]);
 
   const handleMenuSelect = () => {
     const option = menuOptions[menuIndex];
