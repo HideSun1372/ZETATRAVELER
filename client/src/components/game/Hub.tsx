@@ -62,8 +62,8 @@ export function Hub() {
     {
       id: "zara",
       name: "ZARA",
-      x: 5,
-      y: 5,
+      x: 7,
+      y: 10,
       color: "#FF69B4",
       dialogue: [
         "Hey there! I'm ZARA.",
@@ -76,8 +76,8 @@ export function Hub() {
     {
       id: "korin",
       name: "KORIN",
-      x: 15,
-      y: 5,
+      x: 13,
+      y: 10,
       color: "#4169E1",
       dialogue: [
         "...",
@@ -91,7 +91,7 @@ export function Hub() {
       id: "mira",
       name: "MIRA",
       x: 10,
-      y: 12,
+      y: 5,
       color: "#32CD32",
       dialogue: [
         "Oh! A visitor!",
@@ -104,9 +104,9 @@ export function Hub() {
   ], []);
 
   const portals = useMemo(() => [
-    { id: 1, name: "VERDANTIS", x: 4, y: 4, color: "#00FF00" },
-    { id: 2, name: "CRYSTALLUM", x: 16, y: 4, color: "#00FFFF" },
-    { id: 3, name: "OBSIDIAN PRIME", x: 10, y: 12, color: "#8B0000" },
+    { id: 1, name: "VERDANTIS", x: 3, y: 2, color: "#00FF00" },
+    { id: 2, name: "CRYSTALLUM", x: 17, y: 2, color: "#00FFFF" },
+    { id: 3, name: "OBSIDIAN PRIME", x: 10, y: 13, color: "#8B0000" },
   ], []);
   
   const [nearPortal, setNearPortal] = useState<typeof portals[0] | null>(null);
@@ -137,12 +137,19 @@ export function Hub() {
     return false;
   };
 
+  const playerPosRef = useRef(playerPosition);
+  playerPosRef.current = playerPosition;
+
   const checkInteraction = () => {
-    const tileX = Math.floor(playerPosition.x / TILE_SIZE);
-    const tileY = Math.floor(playerPosition.y / TILE_SIZE);
+    const pos = playerPosRef.current;
+    const tileX = Math.floor(pos.x / TILE_SIZE);
+    const tileY = Math.floor(pos.y / TILE_SIZE);
+    
+    console.log("Checking interaction at tile:", tileX, tileY);
     
     for (const npc of npcs) {
       if (Math.abs(tileX - npc.x) <= 1 && Math.abs(tileY - npc.y) <= 1) {
+        console.log("Found NPC:", npc.name);
         setCurrentNPC(npc);
         setShowDialogue(true);
         setDialogueIndex(0);
@@ -153,11 +160,14 @@ export function Hub() {
     }
     
     for (const portal of portals) {
-      if (Math.abs(tileX - portal.x) <= 1 && Math.abs(tileY - portal.y) <= 1) {
+      if (Math.abs(tileX - portal.x) <= 2 && Math.abs(tileY - portal.y) <= 2) {
+        console.log("Found portal:", portal.name);
         travelToPlanet(portal.id);
         return;
       }
     }
+    
+    console.log("No interaction found");
   };
 
   useEffect(() => {
