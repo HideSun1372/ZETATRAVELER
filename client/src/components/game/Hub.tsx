@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import { useRPG } from "../../lib/stores/useRPG";
+import { GalaxyMap } from "./GalaxyMap";
 
 interface NPC {
   id: string;
@@ -38,6 +39,7 @@ export function Hub() {
   const [dialogueIndex, setDialogueIndex] = useState(0);
   const [displayedText, setDisplayedText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [showGalaxyMap, setShowGalaxyMap] = useState(false);
   
   const keysPressed = useRef<Set<string>>(new Set());
   const animationRef = useRef<number>();
@@ -111,6 +113,18 @@ export function Hub() {
       dialogue: [
         "* You rest at the healing station... *",
         "* HP fully restored! *",
+      ],
+    },
+    {
+      id: "galaxy_portal",
+      name: "GALAXY PORTAL",
+      x: 10,
+      y: 3,
+      color: "#9B59B6",
+      dialogue: [
+        "* The Galaxy Portal hums with energy... *",
+        "* 50 planets await across 5 regions... *",
+        "* Opening Galaxy Map... *",
       ],
     },
   ], []);
@@ -222,13 +236,23 @@ export function Hub() {
       if (currentNPC?.id === "healer") {
         heal(maxHp);
       }
+      if (currentNPC?.id === "galaxy_portal") {
+        setShowGalaxyMap(true);
+      }
       setShowDialogue(false);
       setCurrentNPC(null);
     }
   };
 
+  const handlePlanetSelect = (planetId: number) => {
+    setShowGalaxyMap(false);
+    travelToPlanet(planetId);
+  };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (showGalaxyMap) return;
+      
       if (showDialogue) {
         if (e.key === "z" || e.key === "Z" || e.key === "Enter") {
           advanceDialogue();
@@ -254,11 +278,11 @@ export function Hub() {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [showDialogue, dialogueIndex, currentNPC, isTyping]);
+  }, [showDialogue, showGalaxyMap, dialogueIndex, currentNPC, isTyping]);
 
   useEffect(() => {
     const gameLoop = () => {
-      if (showDialogue) {
+      if (showDialogue || showGalaxyMap) {
         animationRef.current = requestAnimationFrame(gameLoop);
         return;
       }
@@ -304,7 +328,7 @@ export function Hub() {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [playerPosition, showDialogue]);
+  }, [playerPosition, showDialogue, showGalaxyMap]);
 
   useEffect(() => {
     if (playerPosition.x === 0 && playerPosition.y === 0) {
@@ -454,6 +478,13 @@ export function Hub() {
           </span>
         ))}
       </div>
+
+      {showGalaxyMap && (
+        <GalaxyMap
+          onClose={() => setShowGalaxyMap(false)}
+          onSelectPlanet={handlePlanetSelect}
+        />
+      )}
     </div>
   );
 }
