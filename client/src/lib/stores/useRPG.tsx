@@ -77,6 +77,7 @@ interface RPGState {
   battlePhase: "menu" | "fight" | "act" | "item" | "defend" | "mercy" | "enemy_attack" | "victory" | "defeat";
   
   defeatedEnemyIds: string[];
+  lastBattlePlanetId: number;
   
   saveSlots: { slot: number; data: string | null; timestamp: string | null }[];
   
@@ -183,6 +184,7 @@ export const useRPG = create<RPGState>((set, get) => ({
   battlePhase: "menu",
   
   defeatedEnemyIds: [],
+  lastBattlePlanetId: 0,
   
   saveSlots: [
     { slot: 1, data: null, timestamp: null },
@@ -295,11 +297,13 @@ export const useRPG = create<RPGState>((set, get) => ({
   },
   
   startBattle: (enemy) => {
+    const state = get();
     set({
       gamePhase: "battle",
       currentEnemy: enemy,
       battleTurn: "player",
       battlePhase: "menu",
+      lastBattlePlanetId: state.currentPlanetId,
     });
   },
   

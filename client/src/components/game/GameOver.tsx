@@ -4,8 +4,7 @@ import { useRPG } from "../../lib/stores/useRPG";
 export function GameOver() {
   const { 
     setGamePhase, 
-    currentPlanetId,
-    hp,
+    lastBattlePlanetId,
     maxHp,
   } = useRPG();
   
@@ -32,7 +31,7 @@ export function GameOver() {
     
     if (selectedOption === 0) {
       healPlayer(maxHp);
-      setGamePhase(currentPlanetId === 0 ? "hub" : "planet");
+      setGamePhase(lastBattlePlanetId === 0 ? "hub" : "planet");
     } else {
       healPlayer(maxHp);
       useRPG.getState().returnToHub();

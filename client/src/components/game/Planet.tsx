@@ -44,6 +44,7 @@ export function Planet() {
     level,
     nebuliShards,
     defeatedEnemyIds,
+    sealCore,
   } = useRPG();
 
   const currentPlanet = planets.find((p) => p.id === currentPlanetId);
@@ -174,6 +175,16 @@ export function Planet() {
     setPlanetSealed(true);
     setShowSealPrompt(false);
     setShowVictory(true);
+    
+    const state = useRPG.getState();
+    useRPG.setState({
+      planets: state.planets.map((p) =>
+        p.id === currentPlanetId 
+          ? { ...p, coreSealed: true, allEnemiesCleared: true }
+          : p
+      ),
+      nebuliTotal: state.nebuliTotal + shards.filter(s => s.collected).length,
+    });
     
     setTimeout(() => {
       setShowVictory(false);

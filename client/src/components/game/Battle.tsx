@@ -43,6 +43,9 @@ export function Battle() {
   const [isDefending, setIsDefending] = useState(false);
   const [attackTimer, setAttackTimer] = useState(0);
   const [enemyTurnActive, setEnemyTurnActive] = useState(false);
+  const [damageFlash, setDamageFlash] = useState(false);
+  const [screenShake, setScreenShake] = useState(false);
+  const [spareProgress, setSpareProgress] = useState(0);
 
   const keysPressed = useRef<Set<string>>(new Set());
   const animationRef = useRef<number>();
@@ -396,8 +399,12 @@ export function Battle() {
           );
 
           if (distance < (SOUL_SIZE + BULLET_SIZE) / 2) {
-            const damage = isDefending ? Math.floor(currentEnemy?.atk || 5 / 2) : currentEnemy?.atk || 5;
+            const damage = isDefending ? Math.floor((currentEnemy?.atk || 5) / 2) : currentEnemy?.atk || 5;
             takeDamage(damage);
+            setDamageFlash(true);
+            setScreenShake(true);
+            setTimeout(() => setDamageFlash(false), 200);
+            setTimeout(() => setScreenShake(false), 150);
             return updated.filter((b) => b.id !== bullet.id);
           }
         }
@@ -436,10 +443,24 @@ export function Battle() {
     }
   }, [hp]);
 
+  useEffect(() => {
+    if (currentEnemy) {
+      setSpareProgress(currentEnemy.talkProgress || 0);
+    }
+  }, [currentEnemy?.talkProgress]);
+  
   if (!currentEnemy) return null;
 
   return (
-    <div className="w-full h-full bg-black flex flex-col items-center justify-center select-none">
+    <div 
+      className={`w-full h-full flex flex-col items-center justify-center select-none transition-all ${
+        screenShake ? 'animate-shake' : ''
+      }`}
+      style={{ 
+        backgroundColor: damageFlash ? '#330000' : '#000000',
+        transition: 'background-color 0.1s'
+      }}
+    >
       <div
         className="text-white text-2xl mb-4"
         style={{ fontFamily: "'Courier New', monospace" }}
@@ -600,7 +621,7 @@ export function Battle() {
       )}
 
       <div
-        className="mt-4 flex gap-8 text-white"
+        className="mt-4 flex gap-8 text-white items-center"
         style={{ fontFamily: "'Courier New', monospace" }}
       >
         <div>
@@ -610,9 +631,21 @@ export function Battle() {
         <div>
           <span className="text-gray-400">LV:</span> {level}
         </div>
-        {currentEnemy.canSpare && (
-          <div className="text-yellow-400 animate-pulse">* SPARE READY *</div>
-        )}
+        <div className="flex items-center gap-2">
+          <span className="text-gray-400">MERCY:</span>
+          <div className="w-24 h-3 bg-gray-800 border border-gray-600">
+            <div 
+              className="h-full transition-all"
+              style={{ 
+                width: `${(spareProgress / 3) * 100}%`,
+                backgroundColor: currentEnemy.canSpare ? '#FFD700' : '#FFFF00'
+              }}
+            />
+          </div>
+          {currentEnemy.canSpare && (
+            <span className="text-yellow-400 animate-pulse">READY!</span>
+          )}
+        </div>
       </div>
     </div>
   );
