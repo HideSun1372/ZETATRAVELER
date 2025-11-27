@@ -28,11 +28,27 @@ export interface AreaContent {
   loreNodes: LoreNode[];
 }
 
+export type RoomArchetype = 
+  | "entrance" 
+  | "corridor" 
+  | "combat_arena" 
+  | "puzzle_chamber" 
+  | "story_hub" 
+  | "rest_area" 
+  | "treasure_vault" 
+  | "traversal" 
+  | "crossroads"
+  | "boss_lair" 
+  | "secret_room"
+  | "observation"
+  | "memorial";
+
 export interface PlanetArea {
   id: string;
   name: string;
   biome: BiomeId;
   description: string;
+  archetype: RoomArchetype;
   width: number;
   height: number;
   connections: AreaConnection[];
@@ -41,6 +57,7 @@ export interface PlanetArea {
   isPuzzleChamber?: boolean;
   isEntrance?: boolean;
   isCoreRoom?: boolean;
+  isSecretRoom?: boolean;
   layoutSeed: number;
 }
 
@@ -60,102 +77,271 @@ export interface PlanetLore {
   totalKeys: number;
 }
 
-const AREA_TEMPLATES: Record<string, { name: string; description: string; biomeOverride?: BiomeId }[]> = {
-  forest: [
-    { name: "Forest Entrance", description: "The canopy opens to reveal a sunlit path." },
-    { name: "Ancient Grove", description: "Massive trees tower overhead, their roots forming natural pathways." },
-    { name: "Hidden Glade", description: "A peaceful clearing where light filters through the leaves." },
-    { name: "Overgrown Ruins", description: "Nature has reclaimed these stone structures.", biomeOverride: "ruins" },
-    { name: "Sacred Spring", description: "Crystal clear water flows from an ancient fountain." },
-    { name: "The Heart Tree", description: "An impossibly large tree dominates the area." },
+const ARCHETYPE_NAMES: Record<RoomArchetype, Record<BiomeId, string[]>> = {
+  entrance: {
+    forest: ["Forest Edge", "Woodland Gate", "Canopy Entrance", "Trail Head"],
+    cave: ["Cave Mouth", "Rocky Entrance", "Cavern Gate", "Underground Access"],
+    ice: ["Frozen Pass", "Ice Gate", "Glacier Entry", "Snow Path"],
+    volcanic: ["Ash Gate", "Lava Edge", "Volcanic Path", "Ember Entrance"],
+    void: ["Rift Entrance", "Void Gate", "Reality Edge", "Null Entry"],
+    celestial: ["Star Gate", "Celestial Entry", "Light Path", "Heaven's Gate"],
+    garden: ["Garden Gate", "Paradise Entry", "Floral Arch", "Eden's Door"],
+    ruins: ["Ruined Gate", "Ancient Entry", "Fallen Arch", "Time's Threshold"],
+    tech: ["Airlock", "Access Port", "Entry Terminal", "Docking Bay"],
+    marsh: ["Wetland Edge", "Marsh Gate", "Bog Entry", "Mire Path"],
+    desert: ["Sand Gate", "Dune Entry", "Desert Edge", "Oasis Path"],
+    crystal: ["Crystal Gate", "Prism Entry", "Faceted Arch", "Light Threshold"],
+  },
+  corridor: {
+    forest: ["Winding Trail", "Forest Path", "Leafy Corridor", "Root Passage", "Overgrown Way"],
+    cave: ["Narrow Tunnel", "Stone Corridor", "Dark Passage", "Rocky Way", "Dim Hallway"],
+    ice: ["Frozen Corridor", "Ice Tunnel", "Glacial Path", "Frost Passage", "Snow Way"],
+    volcanic: ["Ash Corridor", "Lava Tube", "Obsidian Path", "Ember Passage", "Heated Way"],
+    void: ["Null Corridor", "Void Path", "Reality Gap", "Echo Passage", "Empty Way"],
+    celestial: ["Star Path", "Light Corridor", "Cosmic Way", "Stellar Passage", "Radiant Hall"],
+    garden: ["Flower Walk", "Hedge Path", "Petal Corridor", "Bloom Way", "Garden Path"],
+    ruins: ["Crumbling Hall", "Ancient Corridor", "Stone Way", "Fallen Path", "Dusty Passage"],
+    tech: ["Access Corridor", "Maintenance Tunnel", "Service Way", "Tech Passage", "Data Lane"],
+    marsh: ["Boardwalk", "Murky Path", "Wet Corridor", "Bog Walk", "Mist Way"],
+    desert: ["Sand Path", "Dune Corridor", "Rocky Way", "Desert Trail", "Arid Passage"],
+    crystal: ["Prism Corridor", "Crystal Path", "Faceted Way", "Light Tunnel", "Gem Passage"],
+  },
+  combat_arena: {
+    forest: ["Battle Glade", "Warrior's Grove", "Fighting Ground", "Arena Clearing"],
+    cave: ["Battle Cavern", "Fight Chamber", "Arena Cave", "Combat Hollow"],
+    ice: ["Frozen Arena", "Ice Battle Field", "Frost Ring", "Combat Glacier"],
+    volcanic: ["Lava Arena", "Fire Pit", "Volcanic Ring", "Ember Stage"],
+    void: ["Void Arena", "Null Ring", "Reality Stage", "Echo Chamber"],
+    celestial: ["Star Arena", "Celestial Ring", "Light Stage", "Cosmic Court"],
+    garden: ["Duel Garden", "Battle Bloom", "Fighting Grounds", "Arena Meadow"],
+    ruins: ["Fallen Arena", "Ancient Ring", "Battle Ruins", "Combat Hall"],
+    tech: ["Combat Bay", "Training Arena", "Battle Station", "Fight Deck"],
+    marsh: ["Murky Arena", "Bog Ring", "Swamp Stage", "Wet Battleground"],
+    desert: ["Sand Arena", "Dune Ring", "Desert Stage", "Oasis Battle"],
+    crystal: ["Prism Arena", "Crystal Ring", "Faceted Stage", "Gem Battleground"],
+  },
+  puzzle_chamber: {
+    forest: ["Mystic Grove", "Puzzle Glade", "Riddle Woods", "Mystery Clearing"],
+    cave: ["Puzzle Cavern", "Riddle Chamber", "Mystery Cave", "Enigma Hollow"],
+    ice: ["Frozen Puzzle", "Ice Riddle", "Frost Mystery", "Glacial Enigma"],
+    volcanic: ["Fire Puzzle", "Lava Riddle", "Ember Mystery", "Volcanic Enigma"],
+    void: ["Void Puzzle", "Null Riddle", "Reality Mystery", "Echo Enigma"],
+    celestial: ["Star Puzzle", "Celestial Riddle", "Light Mystery", "Cosmic Enigma"],
+    garden: ["Garden Maze", "Floral Puzzle", "Bloom Riddle", "Eden's Mystery"],
+    ruins: ["Ancient Puzzle", "Ruin Riddle", "Time's Mystery", "Lost Enigma"],
+    tech: ["Logic Core", "Data Puzzle", "Circuit Riddle", "System Mystery"],
+    marsh: ["Murky Puzzle", "Bog Riddle", "Swamp Mystery", "Mist Enigma"],
+    desert: ["Sand Puzzle", "Dune Riddle", "Desert Mystery", "Oasis Enigma"],
+    crystal: ["Prism Puzzle", "Crystal Riddle", "Light Mystery", "Gem Enigma"],
+  },
+  story_hub: {
+    forest: ["Ancient Tree", "Sacred Grove", "Story Circle", "Memory Wood"],
+    cave: ["Echo Chamber", "Memory Cavern", "Story Stone", "Ancient Hollow"],
+    ice: ["Frozen Memory", "Ice Archive", "Frost Chronicle", "Glacial Record"],
+    volcanic: ["Flame Archive", "Fire Memory", "Ember Chronicle", "Lava Record"],
+    void: ["Memory Fragment", "Void Archive", "Echo Record", "Null Chronicle"],
+    celestial: ["Star Archive", "Celestial Memory", "Light Chronicle", "Cosmic Record"],
+    garden: ["Memory Garden", "Story Bloom", "Chronicle Meadow", "Eden's Record"],
+    ruins: ["Ancient Library", "Lost Archive", "Time's Chronicle", "Forgotten Record"],
+    tech: ["Data Archive", "Memory Core", "Info Hub", "Record Terminal"],
+    marsh: ["Murky Memory", "Bog Archive", "Swamp Chronicle", "Mist Record"],
+    desert: ["Sand Archive", "Dune Memory", "Desert Chronicle", "Oasis Record"],
+    crystal: ["Prism Archive", "Crystal Memory", "Light Chronicle", "Gem Record"],
+  },
+  rest_area: {
+    forest: ["Peaceful Glade", "Safe Haven", "Quiet Grove", "Rest Clearing", "Serene Wood"],
+    cave: ["Safe Chamber", "Rest Hollow", "Quiet Cavern", "Peaceful Cave", "Sanctuary"],
+    ice: ["Warm Nook", "Ice Shelter", "Frost Haven", "Glacial Rest", "Snow Refuge"],
+    volcanic: ["Cool Chamber", "Safe Ledge", "Rest Ridge", "Ember Haven", "Ash Shelter"],
+    void: ["Stable Space", "Calm Void", "Rest Pocket", "Peaceful Null", "Echo Haven"],
+    celestial: ["Star Rest", "Celestial Haven", "Light Shelter", "Cosmic Refuge", "Radiant Nook"],
+    garden: ["Rest Garden", "Peaceful Meadow", "Calm Grove", "Serene Bloom", "Eden's Rest"],
+    ruins: ["Intact Chamber", "Safe Room", "Rest Hall", "Preserved Nook", "Ancient Refuge"],
+    tech: ["Charging Bay", "Rest Pod", "Safe Room", "Recovery Station", "Calm Terminal"],
+    marsh: ["Dry Ground", "Safe Island", "Rest Mound", "Peaceful Hollow", "Calm Bog"],
+    desert: ["Shaded Oasis", "Cool Cave", "Rest Dune", "Peaceful Shade", "Sand Haven"],
+    crystal: ["Calm Prism", "Crystal Rest", "Serene Facet", "Peaceful Gem", "Light Haven"],
+  },
+  treasure_vault: {
+    forest: ["Hidden Hollow", "Secret Glade", "Treasure Grove", "Buried Cache"],
+    cave: ["Treasure Cave", "Hidden Chamber", "Gem Hollow", "Secret Vault"],
+    ice: ["Frozen Vault", "Ice Treasury", "Glacial Cache", "Frost Hoard"],
+    volcanic: ["Obsidian Vault", "Fire Treasury", "Lava Cache", "Ember Hoard"],
+    void: ["Lost Vault", "Void Treasury", "Null Cache", "Echo Hoard"],
+    celestial: ["Star Vault", "Celestial Treasury", "Light Cache", "Cosmic Hoard"],
+    garden: ["Secret Garden", "Hidden Bloom", "Treasure Meadow", "Eden's Cache"],
+    ruins: ["Ancient Vault", "Lost Treasury", "Ruin Cache", "Forgotten Hoard"],
+    tech: ["Secure Storage", "Data Vault", "Tech Cache", "Locked Bay"],
+    marsh: ["Sunken Chest", "Bog Vault", "Hidden Cache", "Murky Hoard"],
+    desert: ["Buried Vault", "Sand Treasury", "Hidden Tomb", "Desert Cache"],
+    crystal: ["Gem Vault", "Crystal Treasury", "Prism Cache", "Faceted Hoard"],
+  },
+  traversal: {
+    forest: ["Vine Bridge", "Tree Crossing", "Root Maze", "Canopy Walk"],
+    cave: ["Chasm Bridge", "Rock Climb", "Gap Crossing", "Ledge Walk"],
+    ice: ["Ice Bridge", "Glacier Crossing", "Frozen Climb", "Snow Walk"],
+    volcanic: ["Lava Bridge", "Fire Crossing", "Obsidian Walk", "Ember Path"],
+    void: ["Reality Bridge", "Void Crossing", "Null Walk", "Echo Path"],
+    celestial: ["Star Bridge", "Light Crossing", "Cosmic Walk", "Celestial Path"],
+    garden: ["Flower Bridge", "Hedge Maze", "Petal Walk", "Bloom Crossing"],
+    ruins: ["Fallen Bridge", "Ruin Climb", "Ancient Crossing", "Stone Walk"],
+    tech: ["Conveyor", "Lift Shaft", "Platform Crossing", "Tech Bridge"],
+    marsh: ["Lily Path", "Bog Bridge", "Mist Crossing", "Swamp Walk"],
+    desert: ["Dune Climb", "Sand Bridge", "Rock Crossing", "Desert Walk"],
+    crystal: ["Prism Bridge", "Crystal Crossing", "Faceted Walk", "Gem Path"],
+  },
+  crossroads: {
+    forest: ["Four Paths", "Forest Crossroads", "Trail Junction", "Meeting Grove"],
+    cave: ["Cavern Junction", "Tunnel Crossroads", "Cave Meeting", "Stone Hub"],
+    ice: ["Ice Junction", "Glacier Hub", "Frozen Crossroads", "Snow Meeting"],
+    volcanic: ["Lava Junction", "Fire Crossroads", "Ember Hub", "Ash Meeting"],
+    void: ["Void Junction", "Reality Crossroads", "Null Hub", "Echo Meeting"],
+    celestial: ["Star Junction", "Celestial Hub", "Light Crossroads", "Cosmic Meeting"],
+    garden: ["Garden Junction", "Flower Hub", "Bloom Crossroads", "Path Meeting"],
+    ruins: ["Ruin Junction", "Ancient Hub", "Stone Crossroads", "Hall Meeting"],
+    tech: ["System Hub", "Tech Junction", "Data Crossroads", "Terminal Meeting"],
+    marsh: ["Bog Junction", "Marsh Hub", "Swamp Crossroads", "Mire Meeting"],
+    desert: ["Dune Junction", "Sand Hub", "Desert Crossroads", "Oasis Meeting"],
+    crystal: ["Crystal Junction", "Prism Hub", "Gem Crossroads", "Facet Meeting"],
+  },
+  boss_lair: {
+    forest: ["Heart of the Forest", "The Great Tree", "Ancient Core", "Primal Grove"],
+    cave: ["The Depths", "Heart Chamber", "Core Cavern", "Primal Cave"],
+    ice: ["Frozen Heart", "Eternal Glacier", "Core Ice", "Primal Cold"],
+    volcanic: ["The Caldera", "Magma Heart", "Core Fire", "Primal Flame"],
+    void: ["The Singularity", "Void Heart", "Core Null", "Primal Nothing"],
+    celestial: ["Heaven's Throne", "Star Heart", "Core Light", "Primal Radiance"],
+    garden: ["Heart of Eden", "Eternal Bloom", "Core Garden", "Primal Life"],
+    ruins: ["The Throne Room", "Ancient Heart", "Core Chamber", "Primal Hall"],
+    tech: ["Central Core", "Main Terminal", "Prime Hub", "Control Room"],
+    marsh: ["The Deep Fen", "Marsh Heart", "Core Bog", "Primal Swamp"],
+    desert: ["The Scorched Heart", "Eternal Dune", "Core Sand", "Primal Heat"],
+    crystal: ["The Heart Crystal", "Prism Core", "Eternal Gem", "Primal Light"],
+  },
+  secret_room: {
+    forest: ["Hidden Grove", "Secret Hollow", "Mystery Wood", "Lost Path"],
+    cave: ["Hidden Cave", "Secret Tunnel", "Mystery Chamber", "Lost Hollow"],
+    ice: ["Hidden Glacier", "Secret Ice", "Mystery Frost", "Lost Cold"],
+    volcanic: ["Hidden Vent", "Secret Magma", "Mystery Fire", "Lost Ember"],
+    void: ["Hidden Rift", "Secret Null", "Mystery Echo", "Lost Void"],
+    celestial: ["Hidden Star", "Secret Light", "Mystery Radiance", "Lost Heaven"],
+    garden: ["Hidden Bloom", "Secret Meadow", "Mystery Flower", "Lost Paradise"],
+    ruins: ["Hidden Chamber", "Secret Hall", "Mystery Room", "Lost Archive"],
+    tech: ["Hidden Lab", "Secret Bay", "Mystery Terminal", "Lost Data"],
+    marsh: ["Hidden Island", "Secret Bog", "Mystery Swamp", "Lost Mire"],
+    desert: ["Hidden Oasis", "Secret Dune", "Mystery Sand", "Lost Cave"],
+    crystal: ["Hidden Facet", "Secret Prism", "Mystery Gem", "Lost Crystal"],
+  },
+  observation: {
+    forest: ["Canopy View", "High Branch", "Forest Overlook", "Treetop Vista"],
+    cave: ["Crystal View", "High Ledge", "Cave Overlook", "Deep Vista"],
+    ice: ["Glacier View", "Ice Peak", "Frozen Overlook", "Snow Vista"],
+    volcanic: ["Caldera View", "Lava Overlook", "Fire Peak", "Ash Vista"],
+    void: ["Reality View", "Void Overlook", "Null Peak", "Echo Vista"],
+    celestial: ["Star View", "Celestial Overlook", "Light Peak", "Cosmic Vista"],
+    garden: ["Garden View", "Bloom Overlook", "Flower Peak", "Eden Vista"],
+    ruins: ["Tower Top", "Ruin Overlook", "Ancient Peak", "Lost Vista"],
+    tech: ["Observation Deck", "Scan Bay", "View Terminal", "Data Vista"],
+    marsh: ["Mist View", "Bog Overlook", "Swamp Peak", "Murky Vista"],
+    desert: ["Dune View", "Sand Overlook", "Desert Peak", "Oasis Vista"],
+    crystal: ["Prism View", "Crystal Overlook", "Gem Peak", "Light Vista"],
+  },
+  memorial: {
+    forest: ["Memory Glade", "Fallen Tree", "Quiet Memorial", "Forest Shrine"],
+    cave: ["Silent Chamber", "Stone Memorial", "Echo Shrine", "Quiet Depths"],
+    ice: ["Frozen Memorial", "Ice Shrine", "Cold Memory", "Eternal Frost"],
+    volcanic: ["Ash Memorial", "Fire Shrine", "Ember Memory", "Eternal Flame"],
+    void: ["Lost Memorial", "Void Shrine", "Echo Memory", "Eternal Null"],
+    celestial: ["Star Memorial", "Light Shrine", "Celestial Memory", "Eternal Radiance"],
+    garden: ["Memorial Garden", "Quiet Bloom", "Flower Shrine", "Eternal Paradise"],
+    ruins: ["Fallen Statue", "Ancient Memorial", "Lost Shrine", "Eternal Stone"],
+    tech: ["Data Memorial", "Lost Terminal", "Echo Core", "Eternal Record"],
+    marsh: ["Sunken Memorial", "Bog Shrine", "Murky Memory", "Eternal Mist"],
+    desert: ["Sand Memorial", "Buried Shrine", "Desert Memory", "Eternal Dune"],
+    crystal: ["Crystal Memorial", "Prism Shrine", "Gem Memory", "Eternal Facet"],
+  },
+};
+
+const ARCHETYPE_DESCRIPTIONS: Record<RoomArchetype, string[]> = {
+  entrance: [
+    "The journey begins here, with untold mysteries ahead.",
+    "A threshold between worlds, neither here nor there.",
+    "First steps into the unknown beckon you forward.",
+    "The boundary between safety and adventure.",
   ],
-  cave: [
-    { name: "Cave Mouth", description: "Darkness beckons from within the rocky entrance." },
-    { name: "Stalactite Chamber", description: "Massive stone formations drip with ancient water." },
-    { name: "Underground Lake", description: "An eerily still body of water reflects distant lights." },
-    { name: "Crystal Cavern", description: "Glowing crystals illuminate the narrow passages.", biomeOverride: "crystal" },
-    { name: "The Depths", description: "The air grows thick and warm deeper within." },
-    { name: "Forgotten Shrine", description: "Someone once worshipped here, long ago.", biomeOverride: "ruins" },
+  corridor: [
+    "A simple passage connecting greater places.",
+    "The path winds onward, its destination unclear.",
+    "Footsteps echo in the empty space.",
+    "A quiet stretch between moments of discovery.",
+    "The way forward is clear, if unremarkable.",
   ],
-  ice: [
-    { name: "Frozen Pass", description: "Wind howls through ice-covered cliffs." },
-    { name: "Glacier Fields", description: "Endless ice stretches toward the horizon." },
-    { name: "Ice Cavern", description: "Blue light filters through the frozen walls.", biomeOverride: "cave" },
-    { name: "Frozen Temple", description: "An ancient structure preserved perfectly in ice.", biomeOverride: "ruins" },
-    { name: "Aurora Valley", description: "Lights dance in the sky above the snow." },
-    { name: "The Frozen Heart", description: "The coldest place on the planet." },
+  combat_arena: [
+    "Something lurks here, ready for confrontation.",
+    "The air crackles with tension and danger.",
+    "This place has seen many battles.",
+    "Prepare yourself. You are not alone.",
   ],
-  volcanic: [
-    { name: "Lava Fields", description: "Molten rock flows in rivers of fire." },
-    { name: "Obsidian Cliffs", description: "Black glass formations tower overhead." },
-    { name: "Ash Wastes", description: "Everything is covered in gray volcanic ash." },
-    { name: "Magma Chamber", description: "The heat here is almost unbearable." },
-    { name: "Ruined Forge", description: "An ancient civilization built their forges here.", biomeOverride: "tech" },
-    { name: "The Caldera", description: "The heart of the volcano itself." },
+  puzzle_chamber: [
+    "A riddle waits to be solved.",
+    "The room itself seems to test your wit.",
+    "Patterns and secrets hide in plain sight.",
+    "Think carefully. The answer is here.",
   ],
-  void: [
-    { name: "Rift Entrance", description: "Reality itself seems to bend and warp." },
-    { name: "Null Space", description: "Nothing should exist here, yet something does." },
-    { name: "Memory Fragment", description: "Echoes of the past materialize around you." },
-    { name: "The Paradox", description: "Time and space hold no meaning here." },
-    { name: "Echo Chamber", description: "Every sound returns distorted and wrong." },
-    { name: "The Singularity", description: "The center of nothing. The end of everything." },
+  story_hub: [
+    "Ancient knowledge lingers in these walls.",
+    "Stories of the past echo softly.",
+    "Wisdom waits for those who seek it.",
+    "The history of this place unfolds before you.",
   ],
-  celestial: [
-    { name: "Starlight Landing", description: "Platforms of solidified starlight form the ground." },
-    { name: "Constellation Path", description: "Stars form a pathway through the cosmos." },
-    { name: "Solar Terrace", description: "Warm light bathes everything in gold." },
-    { name: "Nebula Gardens", description: "Cosmic clouds form impossible flora.", biomeOverride: "garden" },
-    { name: "The Observatory", description: "Ancient instruments point toward infinity.", biomeOverride: "tech" },
-    { name: "Heaven's Throne", description: "The highest point among the stars." },
+  rest_area: [
+    "A moment of peace in the chaos.",
+    "Safety, however brief, is a precious gift.",
+    "Rest now. The journey continues soon.",
+    "A quiet sanctuary from the dangers beyond.",
+    "Even heroes need to catch their breath.",
   ],
-  garden: [
-    { name: "Garden Gate", description: "Ornate gates open to a paradise within." },
-    { name: "Flower Meadow", description: "Countless flowers bloom in impossible colors." },
-    { name: "Reflection Pool", description: "Still waters mirror the beauty above." },
-    { name: "The Arbor", description: "Climbing plants form natural archways." },
-    { name: "Secret Grove", description: "Hidden away from the world, beauty thrives." },
-    { name: "Heart of Eden", description: "The most beautiful place in existence." },
+  treasure_vault: [
+    "Wealth and wonder await the bold.",
+    "Riches gathered from across the cosmos.",
+    "Fortune favors those who explore.",
+    "Precious things hide in unexpected places.",
   ],
-  ruins: [
-    { name: "Ruined Gates", description: "Once-mighty gates now crumble to dust." },
-    { name: "Collapsed Hall", description: "Grand architecture lies in ruin." },
-    { name: "Forgotten Library", description: "Ancient knowledge waits to be discovered.", biomeOverride: "tech" },
-    { name: "Throne Room", description: "Empty thrones await rulers long dead." },
-    { name: "Catacombs", description: "The dead rest uneasily here.", biomeOverride: "cave" },
-    { name: "Sacred Chamber", description: "The heart of the ancient civilization." },
+  traversal: [
+    "The path requires skill and courage.",
+    "Not all journeys are simple walks.",
+    "Test your agility and determination.",
+    "The way forward demands effort.",
   ],
-  tech: [
-    { name: "Landing Bay", description: "Abandoned vessels gather dust." },
-    { name: "Power Core", description: "Faint energy still hums through the walls." },
-    { name: "Control Center", description: "Terminals flicker with residual data." },
-    { name: "Research Lab", description: "Experiments left unfinished remain." },
-    { name: "Server Room", description: "Ancient data waits to be accessed." },
-    { name: "Central Hub", description: "All paths lead here." },
+  crossroads: [
+    "Many paths diverge from this point.",
+    "Choose your direction carefully.",
+    "All roads lead somewhere. But where?",
+    "A nexus of possibilities awaits.",
   ],
-  marsh: [
-    { name: "Marsh Edge", description: "The ground becomes soft and wet." },
-    { name: "Lily Pond", description: "Giant lily pads provide a path across the water." },
-    { name: "Foggy Hollow", description: "Thick mist obscures everything beyond a few feet." },
-    { name: "Willow Grove", description: "Weeping willows trail their branches in the water." },
-    { name: "Sunken Ruins", description: "Ancient structures slowly sink into the marsh.", biomeOverride: "ruins" },
-    { name: "The Deep Fen", description: "The heart of the wetlands pulses with life." },
+  boss_lair: [
+    "Power radiates from every surface.",
+    "The heart of this world beats here.",
+    "Something ancient and mighty calls this home.",
+    "The final challenge awaits.",
   ],
-  desert: [
-    { name: "Desert Edge", description: "Sand stretches endlessly before you." },
-    { name: "Oasis", description: "A miracle of life in the barren wastes." },
-    { name: "Canyon Pass", description: "Towering rock walls provide shelter from the sun." },
-    { name: "Ancient Tomb", description: "A structure half-buried in the sand.", biomeOverride: "ruins" },
-    { name: "Sand Sea", description: "Dunes rise and fall like frozen waves." },
-    { name: "The Scorched Heart", description: "The hottest place in the desert." },
+  secret_room: [
+    "Few have found this hidden place.",
+    "Secrets hide in the spaces between.",
+    "The curious are rewarded here.",
+    "Not all paths are meant to be found.",
   ],
-  crystal: [
-    { name: "Crystal Entrance", description: "Light refracts through prismatic formations." },
-    { name: "Prism Hall", description: "Rainbow light dances across every surface." },
-    { name: "Resonance Chamber", description: "The crystals here sing with energy." },
-    { name: "Growth Cavern", description: "New crystals slowly form from the walls." },
-    { name: "The Matrix", description: "A geometric perfection of crystalline structures." },
-    { name: "Heart Crystal", description: "The largest crystal formation in existence." },
+  observation: [
+    "From here, the world stretches endlessly.",
+    "A vantage point reveals hidden truths.",
+    "See beyond the immediate horizon.",
+    "Perspective changes everything.",
+  ],
+  memorial: [
+    "Something important happened here.",
+    "Memory lingers in this solemn place.",
+    "Honor the past. Learn from it.",
+    "The echoes of history speak softly.",
   ],
 };
 
@@ -228,6 +414,155 @@ function seededRandom(seed: number): () => number {
   };
 }
 
+function shuffleArray<T>(array: T[], rand: () => number): T[] {
+  const result = [...array];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
+interface RoomNode {
+  id: string;
+  archetype: RoomArchetype;
+  depth: number;
+  connections: string[];
+  isMainPath: boolean;
+  isBranch: boolean;
+}
+
+function generateWorldGraph(
+  planetId: number,
+  difficulty: number,
+  rand: () => number
+): RoomNode[] {
+  const baseRoomCount = 8 + difficulty * 3;
+  const roomCount = baseRoomCount + Math.floor(rand() * 4);
+  
+  const mainPathLength = Math.floor(roomCount * 0.5);
+  const branchCount = Math.floor(roomCount * 0.3);
+  const secretRoomCount = Math.max(1, Math.floor(difficulty / 2));
+  
+  const nodes: RoomNode[] = [];
+  
+  const mainPathArchetypes: RoomArchetype[] = [
+    "entrance",
+    ...shuffleArray<RoomArchetype>(["corridor", "story_hub", "crossroads", "traversal", "observation"], rand).slice(0, 2),
+    "combat_arena",
+    ...shuffleArray<RoomArchetype>(["corridor", "rest_area", "puzzle_chamber", "memorial"], rand).slice(0, 2),
+    "combat_arena",
+    ...shuffleArray<RoomArchetype>(["crossroads", "story_hub", "traversal"], rand).slice(0, 1),
+    "boss_lair",
+  ];
+  
+  while (mainPathArchetypes.length < mainPathLength) {
+    const fillers: RoomArchetype[] = ["corridor", "rest_area", "observation", "memorial", "traversal"];
+    mainPathArchetypes.splice(
+      mainPathArchetypes.length - 1,
+      0,
+      fillers[Math.floor(rand() * fillers.length)]
+    );
+  }
+  
+  for (let i = 0; i < mainPathArchetypes.length; i++) {
+    const node: RoomNode = {
+      id: `${planetId}-area-${i}`,
+      archetype: mainPathArchetypes[i],
+      depth: i,
+      connections: [],
+      isMainPath: true,
+      isBranch: false,
+    };
+    
+    if (i > 0) {
+      node.connections.push(`${planetId}-area-${i - 1}`);
+      nodes[i - 1].connections.push(node.id);
+    }
+    
+    nodes.push(node);
+  }
+  
+  const branchArchetypes: RoomArchetype[] = [
+    "treasure_vault", "rest_area", "story_hub", "combat_arena",
+    "observation", "memorial", "corridor", "puzzle_chamber"
+  ];
+  
+  let branchIndex = mainPathArchetypes.length;
+  for (let b = 0; b < branchCount; b++) {
+    const attachPoint = 1 + Math.floor(rand() * (nodes.length - 2));
+    const attachNode = nodes[attachPoint];
+    
+    if (attachNode.connections.length >= 4) continue;
+    
+    const branchLength = 1 + Math.floor(rand() * 3);
+    let prevId = attachNode.id;
+    
+    for (let j = 0; j < branchLength; j++) {
+      const archetype = branchArchetypes[Math.floor(rand() * branchArchetypes.length)];
+      const branchNode: RoomNode = {
+        id: `${planetId}-area-${branchIndex}`,
+        archetype,
+        depth: attachNode.depth + j + 1,
+        connections: [prevId],
+        isMainPath: false,
+        isBranch: true,
+      };
+      
+      const prevNode = nodes.find(n => n.id === prevId);
+      if (prevNode) prevNode.connections.push(branchNode.id);
+      
+      nodes.push(branchNode);
+      prevId = branchNode.id;
+      branchIndex++;
+    }
+  }
+  
+  for (let s = 0; s < secretRoomCount; s++) {
+    const attachPoint = 2 + Math.floor(rand() * (nodes.length - 3));
+    const attachNode = nodes[attachPoint];
+    
+    if (attachNode.connections.length >= 4) continue;
+    
+    const secretNode: RoomNode = {
+      id: `${planetId}-area-${branchIndex}`,
+      archetype: "secret_room",
+      depth: attachNode.depth + 1,
+      connections: [attachNode.id],
+      isMainPath: false,
+      isBranch: true,
+    };
+    
+    attachNode.connections.push(secretNode.id);
+    nodes.push(secretNode);
+    branchIndex++;
+  }
+  
+  return nodes;
+}
+
+function getDirectionBetweenRooms(
+  fromIndex: number,
+  toIndex: number,
+  totalRooms: number,
+  rand: () => number
+): "north" | "south" | "east" | "west" {
+  if (toIndex > fromIndex) {
+    return rand() > 0.3 ? "north" : (rand() > 0.5 ? "east" : "west");
+  } else {
+    return rand() > 0.3 ? "south" : (rand() > 0.5 ? "west" : "east");
+  }
+}
+
+function getOppositeDirection(dir: "north" | "south" | "east" | "west"): "north" | "south" | "east" | "west" {
+  switch (dir) {
+    case "north": return "south";
+    case "south": return "north";
+    case "east": return "west";
+    case "west": return "east";
+  }
+}
+
 export function generatePlanetAreas(
   planetId: number,
   planetName: string,
@@ -242,101 +577,173 @@ export function generatePlanetAreas(
   const baseBiome = getBiomeForPlanet(biome);
   const baseBiomeId = baseBiome.id as BiomeId;
   
-  const templates = AREA_TEMPLATES[baseBiomeId] || AREA_TEMPLATES.forest;
   const storyArcs = STORY_TEMPLATES[region] || STORY_TEMPLATES["Verdant Cluster"];
   const loreTemplates = LORE_TEMPLATES[region] || LORE_TEMPLATES["Verdant Cluster"];
-  
-  const numAreas = Math.min(3 + Math.floor(difficulty * 0.8), 6);
   const storyArc = storyArcs[planetId % storyArcs.length];
   
-  const shardsPerArea = Math.floor(totalShards / numAreas);
-  const extraShards = totalShards % numAreas;
+  const worldGraph = generateWorldGraph(planetId, difficulty, rand);
+  const numAreas = worldGraph.length;
   
-  const enemiesPerArea = Math.floor(minEnemies / (numAreas - 1));
-  const extraEnemies = minEnemies % (numAreas - 1);
+  const combatRooms = worldGraph.filter(n => 
+    n.archetype === "combat_arena" || n.archetype === "boss_lair"
+  );
+  const treasureRooms = worldGraph.filter(n => 
+    n.archetype === "treasure_vault" || n.archetype === "secret_room"
+  );
+  const storyRooms = worldGraph.filter(n => 
+    n.archetype === "story_hub" || n.archetype === "memorial"
+  );
   
-  const areas: PlanetArea[] = [];
+  const enemiesPerCombatRoom = Math.max(1, Math.floor(minEnemies / Math.max(1, combatRooms.length)));
+  let remainingEnemies = minEnemies;
+  
+  const shardsPerTreasure = Math.max(1, Math.floor(totalShards / Math.max(1, treasureRooms.length + 2)));
+  let remainingShards = totalShards;
+  
   let keysPlaced = 0;
   
-  for (let i = 0; i < numAreas; i++) {
-    const template = templates[i % templates.length];
-    const areaId = `${planetId}-area-${i}`;
+  const areas: PlanetArea[] = [];
+  const usedDirections: Map<string, Set<string>> = new Map();
+  
+  for (const node of worldGraph) {
+    const nameOptions = ARCHETYPE_NAMES[node.archetype]?.[baseBiomeId] || 
+                        ARCHETYPE_NAMES[node.archetype]?.forest || 
+                        ["Unknown Area"];
+    const name = nameOptions[Math.floor(rand() * nameOptions.length)];
+    
+    const descOptions = ARCHETYPE_DESCRIPTIONS[node.archetype] || ["A mysterious place."];
+    const description = descOptions[Math.floor(rand() * descOptions.length)];
     
     const connections: AreaConnection[] = [];
-    if (i > 0) {
+    const nodeDirections = usedDirections.get(node.id) || new Set<string>();
+    
+    for (const connId of node.connections) {
+      const connNode = worldGraph.find(n => n.id === connId);
+      if (!connNode) continue;
+      
+      const connDirections = usedDirections.get(connId) || new Set<string>();
+      
+      const availableDirections: ("north" | "south" | "east" | "west")[] = 
+        (["north", "south", "east", "west"] as const).filter(d => 
+          !nodeDirections.has(d) && !connDirections.has(getOppositeDirection(d))
+        );
+      
+      if (availableDirections.length === 0) continue;
+      
+      let direction: "north" | "south" | "east" | "west";
+      if (connNode.depth > node.depth) {
+        direction = availableDirections.includes("north") ? "north" : availableDirections[0];
+      } else if (connNode.depth < node.depth) {
+        direction = availableDirections.includes("south") ? "south" : availableDirections[0];
+      } else {
+        direction = availableDirections[Math.floor(rand() * availableDirections.length)];
+      }
+      
+      nodeDirections.add(direction);
+      usedDirections.set(node.id, nodeDirections);
+      
+      const needsKey = keysPlaced < keysRequired && 
+                       node.archetype === "crossroads" && 
+                       connNode.isMainPath && 
+                       connNode.depth > node.depth;
+      
       connections.push({
-        targetAreaId: `${planetId}-area-${i - 1}`,
-        direction: "south",
-        type: i === 1 ? "path" : rand() > 0.5 ? "door" : "cave",
+        targetAreaId: connId,
+        direction,
+        type: node.archetype === "secret_room" || connNode?.archetype === "secret_room" 
+          ? "cave" 
+          : node.archetype === "boss_lair" || connNode?.archetype === "boss_lair"
+            ? "gate"
+            : rand() > 0.5 ? "door" : "path",
         x: 10,
-        y: 1,
-        locked: false,
-      });
-    }
-    if (i < numAreas - 1) {
-      const needsKey = keysPlaced < keysRequired && i === keysRequired;
-      connections.push({
-        targetAreaId: `${planetId}-area-${i + 1}`,
-        direction: "north",
-        type: i === numAreas - 2 ? "gate" : rand() > 0.5 ? "door" : "path",
-        x: 10,
-        y: 14,
+        y: direction === "north" ? 2 : direction === "south" ? 14 : 8,
         locked: needsKey,
         keyRequired: needsKey,
       });
+      
+      if (needsKey) keysPlaced++;
     }
     
     const loreNodes: LoreNode[] = [];
-    if (rand() > 0.4 && i < numAreas - 1) {
+    if ((node.archetype === "story_hub" || node.archetype === "memorial" || 
+         (node.archetype === "secret_room" && rand() > 0.5)) && 
+        loreTemplates.length > 0) {
       const loreContent = loreTemplates[Math.floor(rand() * loreTemplates.length)];
       loreNodes.push({
-        id: `${areaId}-lore`,
+        id: `${node.id}-lore`,
         type: ["tablet", "terminal", "memory", "inscription", "echo", "artifact"][Math.floor(rand() * 6)] as LoreNode["type"],
-        title: `${planetName} Codex Entry ${i + 1}`,
+        title: `${planetName} Codex Entry`,
         content: loreContent,
-        x: 3 + Math.floor(rand() * 14),
-        y: 3 + Math.floor(rand() * 10),
+        x: 5 + Math.floor(rand() * 10),
+        y: 4 + Math.floor(rand() * 8),
       });
     }
     
-    const isLastArea = i === numAreas - 1;
-    const hasKey = !isLastArea && keysPlaced < keysRequired && rand() > 0.3;
-    if (hasKey) keysPlaced++;
+    let enemyCount = 0;
+    if (node.archetype === "combat_arena") {
+      enemyCount = Math.min(remainingEnemies, enemiesPerCombatRoom + Math.floor(rand() * 2));
+      remainingEnemies -= enemyCount;
+    } else if (node.archetype === "boss_lair") {
+      enemyCount = 0;
+    }
     
-    const areaShards = shardsPerArea + (i < extraShards ? 1 : 0);
-    const areaEnemies = isLastArea ? 0 : enemiesPerArea + (i < extraEnemies ? 1 : 0);
+    let shardCount = 0;
+    if (node.archetype === "treasure_vault" || node.archetype === "secret_room") {
+      shardCount = Math.min(remainingShards, shardsPerTreasure);
+      remainingShards -= shardCount;
+    } else if (node.archetype === "rest_area" && rand() > 0.7) {
+      shardCount = Math.min(remainingShards, 1);
+      remainingShards -= shardCount;
+    }
+    
+    let hasKey = false;
+    if (keysPlaced < keysRequired && 
+        (node.archetype === "treasure_vault" || 
+         (node.archetype === "combat_arena" && rand() > 0.5))) {
+      hasKey = true;
+      keysPlaced++;
+    }
     
     areas.push({
-      id: areaId,
-      name: template.name,
-      biome: template.biomeOverride || baseBiomeId,
-      description: template.description,
+      id: node.id,
+      name,
+      biome: baseBiomeId,
+      description,
+      archetype: node.archetype,
       width: 20,
       height: 16,
       connections,
       content: {
-        enemyCount: areaEnemies,
-        shardCount: areaShards,
+        enemyCount,
+        shardCount,
         hasKey,
         loreNodes,
       },
-      isEntrance: i === 0,
-      isBossLair: i === numAreas - 1,
-      isCoreRoom: i === numAreas - 1,
-      isPuzzleChamber: i === numAreas - 1,
+      isEntrance: node.archetype === "entrance",
+      isBossLair: node.archetype === "boss_lair",
+      isCoreRoom: node.archetype === "boss_lair",
+      isPuzzleChamber: node.archetype === "puzzle_chamber",
+      isSecretRoom: node.archetype === "secret_room",
       layoutSeed: Math.floor(rand() * 100000),
     });
   }
   
+  while (remainingShards > 0) {
+    const validAreas = areas.filter(a => 
+      !a.isBossLair && a.archetype !== "corridor" && a.content.shardCount < 3
+    );
+    if (validAreas.length === 0) break;
+    const target = validAreas[Math.floor(rand() * validAreas.length)];
+    target.content.shardCount++;
+    remainingShards--;
+  }
+  
   while (keysPlaced < keysRequired) {
-    const validAreas = areas.filter(a => !a.isBossLair && !a.content.hasKey);
-    if (validAreas.length > 0) {
-      const targetArea = validAreas[Math.floor(rand() * validAreas.length)];
-      targetArea.content.hasKey = true;
-      keysPlaced++;
-    } else {
-      break;
-    }
+    const validAreas = areas.filter(a => !a.isBossLair && !a.content.hasKey && !a.isEntrance);
+    if (validAreas.length === 0) break;
+    const target = validAreas[Math.floor(rand() * validAreas.length)];
+    target.content.hasKey = true;
+    keysPlaced++;
   }
   
   return {
