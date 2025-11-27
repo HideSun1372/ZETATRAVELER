@@ -84,6 +84,10 @@ export function Planet() {
   const currentPlanet = planets.find((p) => p.id === currentPlanetId);
   const planetTheme = getPlanetById(currentPlanetId);
   
+  const totalShards = currentPlanet?.totalShards || 2;
+  const minEnemiesRequired = currentPlanet?.minEnemiesRequired || 5;
+  const keysRequired = currentPlanet?.keysRequired || 1;
+  
   const [shards, setShards] = useState<Shard[]>([]);
   const [keys, setKeys] = useState<Key[]>([]);
   const [enemies, setEnemies] = useState<EnemySpawn[]>([]);
@@ -107,11 +111,11 @@ export function Planet() {
       planetTheme.biome,
       planetTheme.region,
       planetTheme.difficulty,
-      currentPlanet?.totalShards || 2,
-      currentPlanet?.minEnemiesRequired || 5,
-      currentPlanet?.keysRequired || 1
+      totalShards,
+      minEnemiesRequired,
+      keysRequired
     );
-  }, [currentPlanetId, planetTheme, currentPlanet]);
+  }, [currentPlanetId, planetTheme, totalShards, minEnemiesRequired, keysRequired]);
   
   const currentAreaId = currentPlanet?.currentAreaId || `${currentPlanetId}-area-0`;
   const currentArea = planetLore?.areas.find(a => a.id === currentAreaId);
