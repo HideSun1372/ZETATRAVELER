@@ -71,7 +71,7 @@ export function VesselCreator({ onComplete }: VesselCreatorProps) {
   }, [stepIndex]);
 
   useEffect(() => {
-    if (stepIndex === 2 && !isTyping && canProceed && !showBackground) {
+    if (stepIndex === 3 && !showBackground) {
       setShowBackground(true);
       
       if (!musicRef.current) {
@@ -104,7 +104,7 @@ export function VesselCreator({ onComplete }: VesselCreatorProps) {
         }, 1000);
       }
     };
-  }, [stepIndex, isTyping, canProceed, showBackground]);
+  }, [stepIndex, showBackground]);
 
   useEffect(() => {
     return () => {
