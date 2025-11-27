@@ -32,6 +32,7 @@ export function VesselCreator({ onComplete }: VesselCreatorProps) {
   const [bgOpacity, setBgOpacity] = useState(0);
   const [whiteOverlay, setWhiteOverlay] = useState(0);
   const [twistTriggered, setTwistTriggered] = useState(false);
+  const [pauseBeforeTyping, setPauseBeforeTyping] = useState(false);
   const musicRef = useRef<Howl | null>(null);
   
   const [body, setBody] = useState("");
@@ -79,9 +80,21 @@ export function VesselCreator({ onComplete }: VesselCreatorProps) {
 
   useEffect(() => {
     setDisplayedText("");
-    setIsTyping(true);
     setCanProceed(false);
     setSelectedIndex(0);
+    
+    const ominousSteps = [20, 21];
+    if (ominousSteps.includes(stepIndex)) {
+      setPauseBeforeTyping(true);
+      setIsTyping(false);
+      const delay = stepIndex === 20 ? 2000 : 2500;
+      setTimeout(() => {
+        setPauseBeforeTyping(false);
+        setIsTyping(true);
+      }, delay);
+    } else {
+      setIsTyping(true);
+    }
   }, [stepIndex]);
 
   useEffect(() => {
