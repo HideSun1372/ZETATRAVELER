@@ -39,6 +39,7 @@ interface Door {
   targetAreaId: string;
   direction: string;
   type: string;
+  routeType: "main" | "branch" | "secret";
   locked: boolean;
   keyRequired: boolean;
 }
@@ -222,6 +223,7 @@ export function Planet() {
       targetAreaId: conn.targetAreaId,
       direction: conn.direction,
       type: conn.type,
+      routeType: conn.routeType,
       locked: conn.locked || false,
       keyRequired: conn.keyRequired || false,
     }));
@@ -756,7 +758,11 @@ export function Planet() {
           className="text-sm text-gray-400 mt-1"
           style={{ fontFamily: "'Courier New', monospace" }}
         >
-          {planetTheme?.biome || "Unknown Biome"} | {"★".repeat(planetTheme?.difficulty || 1)} | Room {(planetLore?.areas.findIndex(a => a.id === currentAreaId) || 0) + 1}/{planetLore?.areas.length || 1}
+          {planetTheme?.biome || "Unknown Biome"} | {"★".repeat(planetTheme?.difficulty || 1)} | 
+          {currentArea?.isMainPath 
+            ? ` Main Path ${currentArea.mainPathOrder}/${planetLore?.areas.filter(a => a.isMainPath).length || 1}`
+            : " Side Area"
+          }
           {currentArea?.archetype && (
             <span className={`ml-2 px-2 py-0.5 rounded text-xs ${
               currentArea.archetype === "combat_arena" ? "bg-red-900/50 text-red-300" :
@@ -848,29 +854,46 @@ export function Planet() {
           ) : null
         )}
 
-        {!isGamePaused && doors.map((door) => (
-          <div
-            key={door.id}
-            className="absolute flex items-center justify-center"
-            style={{
-              left: door.x * TILE_SIZE,
-              top: door.y * TILE_SIZE,
-              width: TILE_SIZE,
-              height: TILE_SIZE,
-              backgroundColor: door.locked && door.keyRequired && currentPlanet && currentPlanet.keysFound < currentPlanet.keysRequired
-                ? "#663300"
-                : door.type === "portal" ? "#7B68EE" : door.type === "gate" ? "#4169E1" : "#8B4513",
-              border: door.locked && door.keyRequired && currentPlanet && currentPlanet.keysFound < currentPlanet.keysRequired
-                ? "2px solid #FF0000"
-                : "2px solid #FFD700",
-              boxShadow: door.type === "portal" ? "0 0 15px #7B68EE" : "none",
-            }}
-          >
-            <span className="text-white text-xl">
-              {door.direction === "north" ? "↑" : door.direction === "south" ? "↓" : door.direction === "east" ? "→" : "←"}
-            </span>
-          </div>
-        ))}
+        {!isGamePaused && doors.map((door) => {
+          const isLocked = door.locked && door.keyRequired && currentPlanet && currentPlanet.keysFound < currentPlanet.keysRequired;
+          const isMainPath = door.routeType === "main";
+          const isSecret = door.routeType === "secret";
+          
+          const bgColor = isLocked ? "#663300" 
+            : door.type === "portal" ? "#7B68EE" 
+            : door.type === "gate" ? "#4169E1" 
+            : isMainPath ? "#228B22"
+            : isSecret ? "#8B008B"
+            : "#8B4513";
+          
+          const borderColor = isLocked ? "#FF0000"
+            : isMainPath ? "#00FF00"
+            : isSecret ? "#FF00FF"
+            : "#FFD700";
+          
+          return (
+            <div
+              key={door.id}
+              className="absolute flex flex-col items-center justify-center"
+              style={{
+                left: door.x * TILE_SIZE,
+                top: door.y * TILE_SIZE,
+                width: TILE_SIZE,
+                height: TILE_SIZE,
+                backgroundColor: bgColor,
+                border: `2px solid ${borderColor}`,
+                boxShadow: isMainPath ? "0 0 10px #00FF00" : door.type === "portal" ? "0 0 15px #7B68EE" : "none",
+              }}
+            >
+              <span className="text-white text-xl">
+                {door.direction === "north" ? "↑" : door.direction === "south" ? "↓" : door.direction === "east" ? "→" : "←"}
+              </span>
+              {isMainPath && (
+                <span className="text-[8px] text-green-300 font-bold">MAIN</span>
+              )}
+            </div>
+          );
+        })}
 
         {!isGamePaused && loreObjects.map((lore) => (
           <div
@@ -996,33 +1019,52 @@ export function Planet() {
           </div>
         )}
 
-        {showDoorPrompt && (
-          <div
-            className="absolute inset-0 flex items-center justify-center"
-            style={{ backgroundColor: "rgba(0,0,0,0.8)" }}
-          >
-            <div className="bg-black border-4 border-blue-400 p-6 text-center">
-              <p
-                className="text-blue-400 text-xl mb-2"
-                style={{ fontFamily: "'Courier New', monospace" }}
-              >
-                {showDoorPrompt.type === "portal" ? "PORTAL" : showDoorPrompt.type === "gate" ? "GATE" : "PASSAGE"}
-              </p>
-              <p
-                className="text-white text-lg mb-4"
-                style={{ fontFamily: "'Courier New', monospace" }}
-              >
-                Travel to next area?
-              </p>
-              <p
-                className="text-gray-400"
-                style={{ fontFamily: "'Courier New', monospace" }}
-              >
-                Z/Enter: Yes | X/Shift: No
-              </p>
+        {showDoorPrompt && (() => {
+          const targetArea = planetLore?.areas.find(a => a.id === showDoorPrompt.targetAreaId);
+          const isMainRoute = showDoorPrompt.routeType === "main";
+          const isSecretRoute = showDoorPrompt.routeType === "secret";
+          
+          return (
+            <div
+              className="absolute inset-0 flex items-center justify-center"
+              style={{ backgroundColor: "rgba(0,0,0,0.8)" }}
+            >
+              <div className={`bg-black border-4 p-6 text-center ${
+                isMainRoute ? "border-green-400" : isSecretRoute ? "border-pink-400" : "border-yellow-400"
+              }`}>
+                <p
+                  className={`text-xl mb-2 ${
+                    isMainRoute ? "text-green-400" : isSecretRoute ? "text-pink-400" : "text-yellow-400"
+                  }`}
+                  style={{ fontFamily: "'Courier New', monospace" }}
+                >
+                  {isMainRoute ? "→ MAIN PATH →" : isSecretRoute ? "??? SECRET ???" : "~ SIDE PATH ~"}
+                </p>
+                <p
+                  className="text-white text-lg mb-2"
+                  style={{ fontFamily: "'Courier New', monospace" }}
+                >
+                  {targetArea?.name || "Unknown Area"}
+                </p>
+                <p
+                  className="text-gray-500 text-sm mb-4 italic"
+                  style={{ fontFamily: "'Courier New', monospace" }}
+                >
+                  {targetArea?.isMainPath 
+                    ? `Main Path ${targetArea.mainPathOrder}/${planetLore?.areas.filter(a => a.isMainPath).length || 1}`
+                    : "Optional exploration"
+                  }
+                </p>
+                <p
+                  className="text-gray-400"
+                  style={{ fontFamily: "'Courier New', monospace" }}
+                >
+                  Z/Enter: Yes | X/Shift: No
+                </p>
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {showLoreDialog && (
           <div
