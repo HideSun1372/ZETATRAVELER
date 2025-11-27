@@ -60,9 +60,9 @@ const TILE_SIZE = 32;
 const MAP_WIDTH = 25;
 const MAP_HEIGHT = 18;
 const PLAYER_SPEED = 4;
-const ENEMY_SPEED = 1.5;
+const ENEMY_SPEED = 2.4;
 const ENEMY_DETECTION_RANGE = 6 * TILE_SIZE;
-const ENEMY_MOVE_INTERVAL = 50;
+const ENEMY_MOVE_INTERVAL = 16;
 
 export function Planet() {
   const {
