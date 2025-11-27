@@ -77,6 +77,12 @@ export function Planet() {
     hp,
     maxHp,
     level,
+    xp,
+    xpToNextLevel,
+    atk,
+    def,
+    gold,
+    hopeBonus,
     nebuliShards,
     defeatedEnemyIds,
     sealCore,
@@ -86,6 +92,7 @@ export function Planet() {
     canSealCore,
     changeArea,
     discoverLore,
+    currentRoute,
   } = useRPG();
 
   const currentPlanet = planets.find((p) => p.id === currentPlanetId);
@@ -1480,31 +1487,48 @@ export function Planet() {
       </div>
 
       <div
-        className="mt-2 flex flex-wrap gap-6 text-white justify-center flex-shrink-0"
-        style={{ fontFamily: "'Courier New', monospace" }}
+        className="mt-2 flex flex-wrap gap-4 text-white justify-center flex-shrink-0"
+        style={{ fontFamily: "'Courier New', monospace", fontSize: "0.85rem" }}
       >
-        <div>
-          <span className="text-gray-400">HP:</span> {hp}/{maxHp}
+        <div className="flex gap-3">
+          <div>
+            <span className="text-gray-400">HP:</span> {hp}/{maxHp + hopeBonus.hp}
+          </div>
+          <div>
+            <span className="text-gray-400">LV:</span> {level}
+            {level < 100 && (
+              <span className="text-gray-600 text-xs ml-1">({xp}/{xpToNextLevel})</span>
+            )}
+          </div>
+          <div>
+            <span className="text-yellow-500">G:</span> {gold}
+          </div>
+          <div className={`${
+            currentRoute === 'pacifist' ? 'text-green-400' : 
+            currentRoute === 'genocide' ? 'text-red-400' : 
+            'text-yellow-400'
+          }`}>
+            {currentRoute.charAt(0).toUpperCase()}
+          </div>
         </div>
-        <div>
-          <span className="text-gray-400">LV:</span> {level}
-        </div>
-        <div>
-          <span className="text-purple-400">SHARDS:</span>{" "}
-          {shards.filter((s) => s.collected).length}/{shards.length}
-        </div>
-        <div>
-          <span className="text-yellow-400">KEYS:</span>{" "}
-          {keys.filter((k) => k.collected).length}/{keys.length}
-        </div>
-        <div>
-          <span className="text-red-400">ENEMIES:</span>{" "}
-          {enemies.filter((e) => !e.isBoss && !e.isSecretBoss && defeatedEnemyIds.includes(e.id)).length}/
-          {enemies.filter((e) => !e.isBoss && !e.isSecretBoss).length}
-        </div>
-        <div>
-          <span className="text-orange-400">BOSS:</span>{" "}
-          {currentPlanet?.bossDefeated ? "✓" : bossSpawned ? "ACTIVE" : "LOCKED"}
+        <div className="flex gap-3">
+          <div>
+            <span className="text-purple-400">SHARDS:</span>{" "}
+            {shards.filter((s) => s.collected).length}/{shards.length}
+          </div>
+          <div>
+            <span className="text-yellow-400">KEYS:</span>{" "}
+            {keys.filter((k) => k.collected).length}/{keys.length}
+          </div>
+          <div>
+            <span className="text-red-400">ENEMIES:</span>{" "}
+            {enemies.filter((e) => !e.isBoss && !e.isSecretBoss && defeatedEnemyIds.includes(e.id)).length}/
+            {enemies.filter((e) => !e.isBoss && !e.isSecretBoss).length}
+          </div>
+          <div>
+            <span className="text-orange-400">BOSS:</span>{" "}
+            {currentPlanet?.bossDefeated ? "✓" : bossSpawned ? "!" : "?"}
+          </div>
         </div>
       </div>
 

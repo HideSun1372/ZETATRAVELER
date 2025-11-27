@@ -26,6 +26,11 @@ export function Hub() {
     hp,
     maxHp,
     level,
+    xp,
+    xpToNextLevel,
+    atk,
+    def,
+    gold,
     hope,
     hopeBonus,
     nebuliShards,
@@ -35,6 +40,9 @@ export function Hub() {
     lakineDialogueIndex,
     advanceLakineDialogue,
     heal,
+    currentRoute,
+    totalKills,
+    totalSpares,
   } = useRPG();
 
   const [showDialogue, setShowDialogue] = useState(false);
@@ -393,20 +401,48 @@ export function Hub() {
       </div>
       
       <div 
-        className="mt-4 flex gap-8 text-white"
+        className="mt-4 flex flex-wrap gap-6 text-white"
         style={{ fontFamily: "'Courier New', monospace" }}
       >
-        <div>
-          <span className="text-gray-400">HP:</span> {hp}/{maxHp + hopeBonus.hp}
+        <div className="flex gap-4">
+          <div>
+            <span className="text-gray-400">HP:</span> {hp}/{maxHp + hopeBonus.hp}
+          </div>
+          <div>
+            <span className="text-gray-400">LV:</span> {level}
+            {level < 100 && (
+              <span className="text-gray-500 text-xs ml-1">({xp}/{xpToNextLevel})</span>
+            )}
+          </div>
+          <div>
+            <span className="text-red-400">ATK:</span> {atk}
+          </div>
+          <div>
+            <span className="text-blue-400">DEF:</span> {def + hopeBonus.def}
+          </div>
+        </div>
+        <div className="flex gap-4">
+          <div>
+            <span className="text-yellow-400">GOLD:</span> {gold}
+          </div>
+          <div>
+            <span className="text-cyan-400">HOPE:</span> {hope}
+          </div>
+          <div>
+            <span className="text-purple-400">NEBULI:</span> {nebuliShards} shards | {nebuliTotal} cores
+          </div>
         </div>
         <div>
-          <span className="text-gray-400">LV:</span> {level}
-        </div>
-        <div>
-          <span className="text-cyan-400">HOPE:</span> {hope}
-        </div>
-        <div>
-          <span className="text-purple-400">NEBULI:</span> {nebuliShards} shards | {nebuliTotal} cores
+          <span className={`${
+            currentRoute === 'pacifist' ? 'text-green-400' : 
+            currentRoute === 'genocide' ? 'text-red-400' : 
+            'text-yellow-400'
+          }`}>
+            ROUTE: {currentRoute.toUpperCase()}
+          </span>
+          <span className="text-gray-500 text-xs ml-2">
+            (K:{totalKills} S:{totalSpares})
+          </span>
         </div>
       </div>
       
