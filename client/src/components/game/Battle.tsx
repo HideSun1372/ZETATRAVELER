@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useRPG } from "../../lib/stores/useRPG";
+import { getEnemyDialogue, getBossDialogue, TalkOption } from "../../lib/data/enemyDialogue";
+import { Sprite, getEnemySpriteType } from "./Sprite";
 
 interface Bullet {
   id: number;
@@ -41,6 +43,7 @@ export function Battle() {
   const [menuIndex, setMenuIndex] = useState(0);
   const [actIndex, setActIndex] = useState(0);
   const [itemIndex, setItemIndex] = useState(0);
+  const [talkIndex, setTalkIndex] = useState(0);
   const [soulPosition, setSoulPosition] = useState({ x: ARENA_WIDTH / 2, y: ARENA_HEIGHT / 2 });
   const [bullets, setBullets] = useState<Bullet[]>([]);
   const [battleMessage, setBattleMessage] = useState("");
@@ -51,6 +54,7 @@ export function Battle() {
   const [damageFlash, setDamageFlash] = useState(false);
   const [screenShake, setScreenShake] = useState(false);
   const [spareProgress, setSpareProgress] = useState(0);
+  const [showTalkMenu, setShowTalkMenu] = useState(false);
 
   const keysPressed = useRef<Set<string>>(new Set());
   const animationRef = useRef<number>();
@@ -61,6 +65,13 @@ export function Battle() {
   const healingItems = inventory.filter((i) => i.type === "healing");
 
   const isBoss = currentEnemy && currentEnemy.maxHp >= 80;
+  
+  const enemyDialogue = useMemo(() => {
+    if (!currentEnemy) return null;
+    return isBoss ? getBossDialogue(currentEnemy.name) : getEnemyDialogue(currentEnemy.name);
+  }, [currentEnemy, isBoss]);
+  
+  const talkOptions = enemyDialogue?.talkOptions || [];
   const isSecretBoss = currentEnemy && currentEnemy.maxHp >= 120;
   const bossPhase = currentEnemy ? (currentEnemy.hp <= currentEnemy.maxHp * 0.5 ? 2 : 1) : 1;
 
@@ -465,39 +476,69 @@ export function Battle() {
         break;
         
       case "Talk":
-        progressTalk();
-        const talkResponses = [
-          `You tried talking to ${currentEnemy?.name}.`,
-          `${currentEnemy?.name} seems to be listening...`,
-          `${currentEnemy?.name} is reconsidering...`,
-        ];
-        const response = talkResponses[Math.min((currentEnemy?.talkProgress || 0), 2)];
-        setBattleMessage(response);
-        setShowMessage(true);
-        setTimeout(() => {
-          setShowMessage(false);
-          if (currentEnemy?.canSpare) {
-            setBattleMessage(`* ${currentEnemy.name} can now be SPARED! *`);
-            setShowMessage(true);
-            setTimeout(() => {
-              setShowMessage(false);
-              startEnemyTurn();
-            }, 1500);
-          } else {
-            startEnemyTurn();
-          }
-        }, 1500);
+        setShowTalkMenu(true);
+        setTalkIndex(0);
         break;
         
       case "Flirt":
-        setBattleMessage(`You winked at ${currentEnemy?.name}. It seems confused.`);
+        const flirtResponse = enemyDialogue?.flirtResponse || `${currentEnemy?.name} doesn't know how to react.`;
+        setBattleMessage(flirtResponse);
         setShowMessage(true);
+        setSpareProgress(prev => Math.min(100, prev + 5));
         setTimeout(() => {
           setShowMessage(false);
           startEnemyTurn();
         }, 1500);
         break;
     }
+  };
+
+  const handleTalkSelect = () => {
+    const option = talkOptions[talkIndex];
+    if (!option || !currentEnemy) return;
+    
+    setShowTalkMenu(false);
+    setBattleMessage(option.response);
+    setShowMessage(true);
+    
+    let newProgress = spareProgress;
+    if (option.effect === "progress") {
+      newProgress = Math.min(100, spareProgress + (option.progressAmount || 20));
+    } else if (option.effect === "setback") {
+      newProgress = Math.max(0, spareProgress + (option.progressAmount || -10));
+    } else if (option.effect === "instant_spare") {
+      newProgress = 100;
+    }
+    setSpareProgress(newProgress);
+    
+    if (newProgress >= 100) {
+      progressTalk();
+      progressTalk();
+      progressTalk();
+    } else if (option.effect === "progress") {
+      progressTalk();
+    }
+    
+    setTimeout(() => {
+      setShowMessage(false);
+      if (newProgress >= 100 && currentEnemy?.canSpare) {
+        setBattleMessage(`* ${currentEnemy.name} can now be SPARED! *`);
+        setShowMessage(true);
+        setTimeout(() => {
+          setShowMessage(false);
+          startEnemyTurn();
+        }, 1500);
+      } else if (newProgress >= 100) {
+        setBattleMessage(`* ${currentEnemy.name} is ready to be spared... *`);
+        setShowMessage(true);
+        setTimeout(() => {
+          setShowMessage(false);
+          startEnemyTurn();
+        }, 1500);
+      } else {
+        startEnemyTurn();
+      }
+    }, 1500);
   };
 
   const handleItemSelect = () => {
@@ -554,14 +595,26 @@ export function Battle() {
           handleMenuSelect();
         }
       } else if (battlePhase === "act") {
-        if (e.key === "ArrowUp" || e.key === "w" || e.key === "W") {
-          setActIndex((prev) => (prev - 1 + actOptions.length) % actOptions.length);
-        } else if (e.key === "ArrowDown" || e.key === "s" || e.key === "S") {
-          setActIndex((prev) => (prev + 1) % actOptions.length);
-        } else if (e.key === "z" || e.key === "Z" || e.key === "Enter") {
-          handleActSelect();
-        } else if (e.key === "x" || e.key === "X" || e.key === "Shift") {
-          setBattlePhase("menu");
+        if (showTalkMenu) {
+          if (e.key === "ArrowUp" || e.key === "w" || e.key === "W") {
+            setTalkIndex((prev) => (prev - 1 + talkOptions.length) % talkOptions.length);
+          } else if (e.key === "ArrowDown" || e.key === "s" || e.key === "S") {
+            setTalkIndex((prev) => (prev + 1) % talkOptions.length);
+          } else if (e.key === "z" || e.key === "Z" || e.key === "Enter") {
+            handleTalkSelect();
+          } else if (e.key === "x" || e.key === "X" || e.key === "Shift") {
+            setShowTalkMenu(false);
+          }
+        } else {
+          if (e.key === "ArrowUp" || e.key === "w" || e.key === "W") {
+            setActIndex((prev) => (prev - 1 + actOptions.length) % actOptions.length);
+          } else if (e.key === "ArrowDown" || e.key === "s" || e.key === "S") {
+            setActIndex((prev) => (prev + 1) % actOptions.length);
+          } else if (e.key === "z" || e.key === "Z" || e.key === "Enter") {
+            handleActSelect();
+          } else if (e.key === "x" || e.key === "X" || e.key === "Shift") {
+            setBattlePhase("menu");
+          }
         }
       } else if (battlePhase === "item") {
         if (e.key === "ArrowUp" || e.key === "w" || e.key === "W") {
@@ -587,7 +640,7 @@ export function Battle() {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [battlePhase, menuIndex, actIndex, itemIndex, showMessage, currentEnemy]);
+  }, [battlePhase, menuIndex, actIndex, itemIndex, talkIndex, showMessage, showTalkMenu, currentEnemy, talkOptions.length]);
 
   useEffect(() => {
     if (battlePhase !== "enemy_attack" || !enemyTurnActive) return;
@@ -746,13 +799,13 @@ export function Battle() {
 
         {battlePhase !== "enemy_attack" && !showMessage && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <div
-              className="text-6xl"
-              style={{
-                color: currentEnemy.canSpare ? "#FFFF00" : "#FF6B6B",
-              }}
-            >
-              {currentEnemy.name[0]}
+            <div className={`${currentEnemy.canSpare ? 'animate-pulse' : ''}`}>
+              <Sprite 
+                type={isBoss ? "boss" : getEnemySpriteType(currentEnemy.name)} 
+                size={isBoss ? 128 : 96}
+                glow={currentEnemy.canSpare}
+                glowColor={currentEnemy.canSpare ? "#FFD700" : undefined}
+              />
             </div>
           </div>
         )}
@@ -791,7 +844,7 @@ export function Battle() {
         </div>
       )}
 
-      {battlePhase === "act" && !showMessage && (
+      {battlePhase === "act" && !showMessage && !showTalkMenu && (
         <div className="flex flex-col gap-2">
           {actOptions.map((option, index) => (
             <div
@@ -805,7 +858,63 @@ export function Battle() {
               {option}
             </div>
           ))}
-          <p className="text-gray-500 text-sm mt-2" style={{ fontFamily: "'Courier New', monospace" }}>
+          <div className="mt-2 mb-2">
+            <p className="text-gray-400 text-xs mb-1" style={{ fontFamily: "'Courier New', monospace" }}>
+              SPARE PROGRESS:
+            </p>
+            <div className="w-48 h-3 bg-gray-800 border border-gray-600">
+              <div
+                className="h-full transition-all"
+                style={{ 
+                  width: `${spareProgress}%`,
+                  backgroundColor: spareProgress >= 100 ? "#FFD700" : "#00FF00"
+                }}
+              />
+            </div>
+            {spareProgress >= 100 && (
+              <p className="text-yellow-400 text-xs mt-1 animate-pulse" style={{ fontFamily: "'Courier New', monospace" }}>
+                Ready to SPARE!
+              </p>
+            )}
+          </div>
+          <p className="text-gray-500 text-sm" style={{ fontFamily: "'Courier New', monospace" }}>
+            X/Shift: Back
+          </p>
+        </div>
+      )}
+
+      {battlePhase === "act" && !showMessage && showTalkMenu && (
+        <div className="flex flex-col gap-2">
+          <p className="text-cyan-400 text-lg mb-2" style={{ fontFamily: "'Courier New', monospace" }}>
+            What do you say?
+          </p>
+          {talkOptions.map((option, index) => (
+            <div
+              key={option.id}
+              className={`px-4 py-2 cursor-pointer ${
+                index === talkIndex ? "text-yellow-400" : "text-white"
+              }`}
+              style={{ fontFamily: "'Courier New', monospace" }}
+            >
+              {index === talkIndex ? "▶ " : "  "}
+              {option.text}
+            </div>
+          ))}
+          <div className="mt-2 mb-2">
+            <p className="text-gray-400 text-xs mb-1" style={{ fontFamily: "'Courier New', monospace" }}>
+              SPARE PROGRESS:
+            </p>
+            <div className="w-48 h-3 bg-gray-800 border border-gray-600">
+              <div
+                className="h-full transition-all"
+                style={{ 
+                  width: `${spareProgress}%`,
+                  backgroundColor: spareProgress >= 100 ? "#FFD700" : "#00FF00"
+                }}
+              />
+            </div>
+          </div>
+          <p className="text-gray-500 text-sm" style={{ fontFamily: "'Courier New', monospace" }}>
             X/Shift: Back
           </p>
         </div>
