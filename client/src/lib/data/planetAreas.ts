@@ -1,10 +1,13 @@
 import { BiomeId, BIOME_CATALOG, getBiomeForPlanet } from "./biomes";
 import { PuzzleType, AttackPattern, PlanetEnemy } from "./planets";
 
+export type RouteType = "main" | "branch" | "secret";
+
 export interface AreaConnection {
   targetAreaId: string;
   direction: "north" | "south" | "east" | "west";
   type: "door" | "portal" | "path" | "gate" | "cave" | "stairs";
+  routeType: RouteType;
   x: number;
   y: number;
   locked?: boolean;
@@ -58,6 +61,8 @@ export interface PlanetArea {
   isEntrance?: boolean;
   isCoreRoom?: boolean;
   isSecretRoom?: boolean;
+  isMainPath: boolean;
+  mainPathOrder: number;
   layoutSeed: number;
 }
 
@@ -584,6 +589,9 @@ export function generatePlanetAreas(
   const worldGraph = generateWorldGraph(planetId, difficulty, rand);
   const numAreas = worldGraph.length;
   
+  const mainPathNodes = worldGraph.filter(n => n.isMainPath);
+  const mainPathCount = mainPathNodes.length;
+  
   const combatRooms = worldGraph.filter(n => 
     n.archetype === "combat_arena" || n.archetype === "boss_lair"
   );
@@ -647,6 +655,10 @@ export function generatePlanetAreas(
                        connNode.isMainPath && 
                        connNode.depth > node.depth;
       
+      const routeType: RouteType = 
+        (node.archetype === "secret_room" || connNode.archetype === "secret_room") ? "secret" :
+        (node.isMainPath && connNode.isMainPath) ? "main" : "branch";
+      
       connections.push({
         targetAreaId: connId,
         direction,
@@ -654,7 +666,8 @@ export function generatePlanetAreas(
           ? "cave" 
           : node.archetype === "boss_lair" || connNode?.archetype === "boss_lair"
             ? "gate"
-            : rand() > 0.5 ? "door" : "path",
+            : routeType === "main" ? "path" : "door",
+        routeType,
         x: 10,
         y: direction === "north" ? 2 : direction === "south" ? 14 : 8,
         locked: needsKey,
@@ -704,6 +717,10 @@ export function generatePlanetAreas(
       keysPlaced++;
     }
     
+    const mainPathOrder = node.isMainPath 
+      ? mainPathNodes.findIndex(n => n.id === node.id) + 1 
+      : 0;
+    
     areas.push({
       id: node.id,
       name,
@@ -724,6 +741,8 @@ export function generatePlanetAreas(
       isCoreRoom: node.archetype === "boss_lair",
       isPuzzleChamber: node.archetype === "puzzle_chamber",
       isSecretRoom: node.archetype === "secret_room",
+      isMainPath: node.isMainPath,
+      mainPathOrder,
       layoutSeed: Math.floor(rand() * 100000),
     });
   }
