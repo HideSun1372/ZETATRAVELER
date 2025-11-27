@@ -331,7 +331,8 @@ export function Planet() {
 
   const regularEnemiesDefeated = enemies.filter(e => !e.isBoss && !e.isSecretBoss).every(e => defeatedEnemyIds.includes(e.id));
   const allKeysCollected = keys.every(k => k.collected);
-  const canSpawnBoss = regularEnemiesDefeated && allKeysCollected && !bossSpawned && !currentPlanet?.bossDefeated;
+  const isInBossLair = currentArea?.isBossLair === true;
+  const canSpawnBoss = regularEnemiesDefeated && allKeysCollected && !bossSpawned && !currentPlanet?.bossDefeated && isInBossLair;
 
   useEffect(() => {
     if (canSpawnBoss && planetTheme?.boss) {
@@ -372,7 +373,7 @@ export function Planet() {
 
   const allShardsAndKeysCollected = shards.every(s => s.collected) && keys.every(k => k.collected);
   const canSpawnSecretBoss = currentPlanet?.bossDefeated && allShardsAndKeysCollected && 
-    !secretBossSpawned && !currentPlanet?.secretBossDefeated && planetTheme?.secretBoss;
+    !secretBossSpawned && !currentPlanet?.secretBossDefeated && planetTheme?.secretBoss && isInBossLair;
 
   useEffect(() => {
     if (canSpawnSecretBoss && planetTheme?.secretBoss) {
