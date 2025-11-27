@@ -612,23 +612,17 @@ export function generatePlanetAreas(
   
   const areas: PlanetArea[] = [];
   const usedDirections: Map<string, Set<string>> = new Map();
+  const connectionDirections: Map<string, "north" | "south" | "east" | "west"> = new Map();
   
   for (const node of worldGraph) {
-    const nameOptions = ARCHETYPE_NAMES[node.archetype]?.[baseBiomeId] || 
-                        ARCHETYPE_NAMES[node.archetype]?.forest || 
-                        ["Unknown Area"];
-    const name = nameOptions[Math.floor(rand() * nameOptions.length)];
-    
-    const descOptions = ARCHETYPE_DESCRIPTIONS[node.archetype] || ["A mysterious place."];
-    const description = descOptions[Math.floor(rand() * descOptions.length)];
-    
-    const connections: AreaConnection[] = [];
-    const nodeDirections = usedDirections.get(node.id) || new Set<string>();
-    
     for (const connId of node.connections) {
+      const pairKey = [node.id, connId].sort().join("-");
+      if (connectionDirections.has(pairKey)) continue;
+      
       const connNode = worldGraph.find(n => n.id === connId);
       if (!connNode) continue;
       
+      const nodeDirections = usedDirections.get(node.id) || new Set<string>();
       const connDirections = usedDirections.get(connId) || new Set<string>();
       
       const availableDirections: ("north" | "south" | "east" | "west")[] = 
@@ -648,7 +642,32 @@ export function generatePlanetAreas(
       }
       
       nodeDirections.add(direction);
+      connDirections.add(getOppositeDirection(direction));
       usedDirections.set(node.id, nodeDirections);
+      usedDirections.set(connId, connDirections);
+      
+      connectionDirections.set(`${node.id}->${connId}`, direction);
+      connectionDirections.set(`${connId}->${node.id}`, getOppositeDirection(direction));
+    }
+  }
+  
+  for (const node of worldGraph) {
+    const nameOptions = ARCHETYPE_NAMES[node.archetype]?.[baseBiomeId] || 
+                        ARCHETYPE_NAMES[node.archetype]?.forest || 
+                        ["Unknown Area"];
+    const name = nameOptions[Math.floor(rand() * nameOptions.length)];
+    
+    const descOptions = ARCHETYPE_DESCRIPTIONS[node.archetype] || ["A mysterious place."];
+    const description = descOptions[Math.floor(rand() * descOptions.length)];
+    
+    const connections: AreaConnection[] = [];
+    
+    for (const connId of node.connections) {
+      const connNode = worldGraph.find(n => n.id === connId);
+      if (!connNode) continue;
+      
+      const direction = connectionDirections.get(`${node.id}->${connId}`);
+      if (!direction) continue;
       
       const needsKey = keysPlaced < keysRequired && 
                        node.archetype === "crossroads" && 
