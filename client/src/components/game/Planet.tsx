@@ -756,7 +756,22 @@ export function Planet() {
           className="text-sm text-gray-400 mt-1"
           style={{ fontFamily: "'Courier New', monospace" }}
         >
-          {planetTheme?.biome || "Unknown Biome"} | Difficulty: {"★".repeat(planetTheme?.difficulty || 1)} | Area {(planetLore?.areas.findIndex(a => a.id === currentAreaId) || 0) + 1}/{planetLore?.areas.length || 1}
+          {planetTheme?.biome || "Unknown Biome"} | {"★".repeat(planetTheme?.difficulty || 1)} | Room {(planetLore?.areas.findIndex(a => a.id === currentAreaId) || 0) + 1}/{planetLore?.areas.length || 1}
+          {currentArea?.archetype && (
+            <span className={`ml-2 px-2 py-0.5 rounded text-xs ${
+              currentArea.archetype === "combat_arena" ? "bg-red-900/50 text-red-300" :
+              currentArea.archetype === "boss_lair" ? "bg-purple-900/50 text-purple-300" :
+              currentArea.archetype === "rest_area" ? "bg-green-900/50 text-green-300" :
+              currentArea.archetype === "treasure_vault" ? "bg-yellow-900/50 text-yellow-300" :
+              currentArea.archetype === "puzzle_chamber" ? "bg-blue-900/50 text-blue-300" :
+              currentArea.archetype === "story_hub" ? "bg-cyan-900/50 text-cyan-300" :
+              currentArea.archetype === "secret_room" ? "bg-pink-900/50 text-pink-300" :
+              currentArea.archetype === "crossroads" ? "bg-orange-900/50 text-orange-300" :
+              "bg-gray-800/50 text-gray-300"
+            }`}>
+              {currentArea.archetype.replace("_", " ").toUpperCase()}
+            </span>
+          )}
         </div>
       </div>
 
