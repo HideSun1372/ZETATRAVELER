@@ -699,8 +699,8 @@ export function Planet() {
   };
 
   return (
-    <div className="w-full h-full bg-black flex flex-col items-center justify-center select-none">
-      <div className="text-center mb-2">
+    <div className="w-full h-full bg-black flex flex-col items-center select-none overflow-hidden py-2">
+      <div className="text-center mb-2 flex-shrink-0">
         <div
           className="text-xl"
           style={{ 
@@ -731,7 +731,7 @@ export function Planet() {
       </div>
 
       <div
-        className="relative border-4"
+        className="relative border-4 flex-shrink-0"
         style={{
           width: MAP_WIDTH * TILE_SIZE,
           height: MAP_HEIGHT * TILE_SIZE,
@@ -1232,7 +1232,7 @@ export function Planet() {
       </div>
 
       <div
-        className="mt-4 flex flex-wrap gap-6 text-white justify-center"
+        className="mt-2 flex flex-wrap gap-6 text-white justify-center flex-shrink-0"
         style={{ fontFamily: "'Courier New', monospace" }}
       >
         <div>
@@ -1261,7 +1261,7 @@ export function Planet() {
       </div>
 
       <div
-        className="mt-2 text-gray-500 text-sm text-center max-w-lg"
+        className="mt-1 text-gray-500 text-xs text-center max-w-lg flex-shrink-0"
         style={{ fontFamily: "'Courier New', monospace" }}
       >
         {currentPlanet?.bossDefeated && !planetSealed 
