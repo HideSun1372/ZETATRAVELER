@@ -30,7 +30,10 @@ export function GalaxyMap({ onClose, onSelectPlanet }: GalaxyMapProps) {
     ).length;
   };
 
+  const DEBUG_UNLOCK_ALL = true;
+
   const isRegionUnlocked = (regionIndex: number): boolean => {
+    if (DEBUG_UNLOCK_ALL) return true;
     if (regionIndex === 0) return true;
     const prevRegion = REGIONS[regionIndex - 1];
     const prevRegionPlanets = planets.filter(
@@ -40,6 +43,7 @@ export function GalaxyMap({ onClose, onSelectPlanet }: GalaxyMapProps) {
   };
 
   const isPlanetUnlocked = (planetId: number): boolean => {
+    if (DEBUG_UNLOCK_ALL) return true;
     if (planetId === 1) return true;
     const currentRegionIndex = REGIONS.findIndex(
       (r) => planetId >= r.planets[0] && planetId <= r.planets[1]
