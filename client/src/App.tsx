@@ -19,7 +19,7 @@ function App() {
 
   useEffect(() => {
     if (SKIP_VESSEL_CREATION && gamePhase === "vessel") {
-      setVesselName("DEBUG_PLAYER");
+      setVesselName("Aiden");
       setGamePhase("intro"); // Skip to intro cutscene (station scene)
     }
   }, [gamePhase]);
