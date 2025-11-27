@@ -74,8 +74,6 @@ export function VesselCreator({ onComplete }: VesselCreatorProps) {
   const currentStep = steps[stepIndex];
   const currentText = currentStep.type === "summary" 
     ? `FORM: ${body}\nNATURE: ${head}\nNAME: ${name}\n\nIS THIS CORRECT?`
-    : currentStep.type === "final"
-    ? `Your name is ${name}.`
     : currentStep.text;
 
   useEffect(() => {
@@ -83,15 +81,13 @@ export function VesselCreator({ onComplete }: VesselCreatorProps) {
     setCanProceed(false);
     setSelectedIndex(0);
     
-    const ominousSteps = [20, 21];
-    if (ominousSteps.includes(stepIndex)) {
+    if (stepIndex === 21) {
       setPauseBeforeTyping(true);
       setIsTyping(false);
-      const delay = stepIndex === 20 ? 2000 : 2500;
       setTimeout(() => {
         setPauseBeforeTyping(false);
         setIsTyping(true);
-      }, delay);
+      }, 2500);
     } else {
       setIsTyping(true);
     }
@@ -141,7 +137,7 @@ export function VesselCreator({ onComplete }: VesselCreatorProps) {
       setTimeout(() => {
         let white = 0;
         const fadeInterval = setInterval(() => {
-          white += 0.015;
+          white += 0.025;
           if (white >= 1) {
             white = 1;
             clearInterval(fadeInterval);
@@ -150,8 +146,8 @@ export function VesselCreator({ onComplete }: VesselCreatorProps) {
             }, 500);
           }
           setWhiteOverlay(white);
-        }, 50);
-      }, 800);
+        }, 40);
+      }, 1200);
     }
   }, [currentStep.type, name, onComplete]);
 
