@@ -73,8 +73,8 @@ export function VesselCreator({ onComplete }: VesselCreatorProps) {
   const currentStep = steps[stepIndex];
   const currentText = currentStep.type === "summary" 
     ? `FORM: ${body}\nNATURE: ${head}\nNAME: ${name}\n\nIS THIS CORRECT?`
-    : currentStep.type === "twist" || currentStep.type === "final"
-    ? currentStep.text
+    : currentStep.type === "final"
+    ? `Your name is ${name}.`
     : currentStep.text;
 
   useEffect(() => {
@@ -116,30 +116,19 @@ export function VesselCreator({ onComplete }: VesselCreatorProps) {
       setTwistTriggered(true);
       
       if (musicRef.current) {
-        musicRef.current.fade(musicRef.current.volume(), 0, 800);
-        setTimeout(() => {
-          musicRef.current?.stop();
-        }, 800);
+        musicRef.current.stop();
       }
       
-      let opacity = bgOpacity;
-      const fadeInterval = setInterval(() => {
-        opacity -= 0.02;
-        if (opacity <= 0) {
-          opacity = 0;
-          clearInterval(fadeInterval);
-        }
-        setBgOpacity(opacity);
-      }, 30);
+      setBgOpacity(0);
     }
-  }, [currentStep.type, twistTriggered, bgOpacity]);
+  }, [currentStep.type, twistTriggered]);
 
   useEffect(() => {
-    if (currentStep.type === "final" && !isTyping && canProceed) {
+    if (currentStep.type === "final") {
       setTimeout(() => {
         let white = 0;
         const fadeInterval = setInterval(() => {
-          white += 0.02;
+          white += 0.015;
           if (white >= 1) {
             white = 1;
             clearInterval(fadeInterval);
@@ -148,10 +137,10 @@ export function VesselCreator({ onComplete }: VesselCreatorProps) {
             }, 500);
           }
           setWhiteOverlay(white);
-        }, 40);
-      }, 1500);
+        }, 50);
+      }, 800);
     }
-  }, [currentStep.type, isTyping, canProceed, name, onComplete]);
+  }, [currentStep.type, name, onComplete]);
 
   useEffect(() => {
     return () => {
