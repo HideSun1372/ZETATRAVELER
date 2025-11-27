@@ -19,6 +19,15 @@ export interface Enemy {
 
 export type PuzzleType = "simon" | "rhythm" | "misdirection";
 
+export interface AreaState {
+  id: string;
+  visited: boolean;
+  enemiesDefeated: number;
+  shardsCollected: number;
+  keyCollected: boolean;
+  loreDiscovered: string[];
+}
+
 export interface Planet {
   id: number;
   name: string;
@@ -34,6 +43,9 @@ export interface Planet {
   keysRequired: number;
   minEnemiesRequired: number;
   puzzleType: PuzzleType;
+  currentAreaId: string;
+  areaStates: AreaState[];
+  loreDiscovered: string[];
 }
 
 export interface Traveler {
@@ -135,6 +147,13 @@ interface RPGState {
   defeatBoss: () => void;
   defeatSecretBoss: () => void;
   canSealCore: () => boolean;
+  
+  changeArea: (areaId: string) => void;
+  discoverLore: (loreId: string) => void;
+  markAreaVisited: (areaId: string) => void;
+  collectAreaShard: (areaId: string) => void;
+  collectAreaKey: (areaId: string) => void;
+  defeatAreaEnemy: (areaId: string) => void;
 }
 
 const getPuzzleType = (planetId: number): PuzzleType => {
@@ -146,6 +165,20 @@ const generatePlanets = (): Planet[] => {
   return PLANET_DATA.map((planet) => {
     const minEnemies = Math.min(10, 5 + Math.floor(planet.id / 10));
     const keysRequired = planet.id <= 10 ? 1 : planet.id <= 30 ? 2 : 3;
+    const numAreas = Math.min(3 + Math.floor(planet.difficulty * 0.8), 6);
+    
+    const initialAreaStates: AreaState[] = [];
+    for (let i = 0; i < numAreas; i++) {
+      initialAreaStates.push({
+        id: `${planet.id}-area-${i}`,
+        visited: false,
+        enemiesDefeated: 0,
+        shardsCollected: 0,
+        keyCollected: false,
+        loreDiscovered: [],
+      });
+    }
+    
     return {
       id: planet.id,
       name: planet.name,
@@ -161,6 +194,9 @@ const generatePlanets = (): Planet[] => {
       keysRequired,
       minEnemiesRequired: minEnemies,
       puzzleType: getPuzzleType(planet.id),
+      currentAreaId: `${planet.id}-area-0`,
+      areaStates: initialAreaStates,
+      loreDiscovered: [],
     };
   });
 };
@@ -569,5 +605,103 @@ export const useRPG = create<RPGState>((set, get) => ({
     const bossDefeated = currentPlanet.bossDefeated;
     
     return hasEnoughEnemies && hasAllKeys && bossDefeated;
+  },
+  
+  changeArea: (areaId) => {
+    const state = get();
+    set({
+      planets: state.planets.map((p) =>
+        p.id === state.currentPlanetId
+          ? { ...p, currentAreaId: areaId }
+          : p
+      ),
+      playerPosition: { x: 10, y: 8 },
+    });
+    get().markAreaVisited(areaId);
+  },
+  
+  discoverLore: (loreId) => {
+    const state = get();
+    const currentPlanet = state.planets.find((p) => p.id === state.currentPlanetId);
+    if (currentPlanet && !currentPlanet.loreDiscovered.includes(loreId)) {
+      set({
+        planets: state.planets.map((p) =>
+          p.id === state.currentPlanetId
+            ? { ...p, loreDiscovered: [...p.loreDiscovered, loreId] }
+            : p
+        ),
+      });
+    }
+  },
+  
+  markAreaVisited: (areaId) => {
+    const state = get();
+    set({
+      planets: state.planets.map((p) =>
+        p.id === state.currentPlanetId
+          ? {
+              ...p,
+              areaStates: p.areaStates.map((a) =>
+                a.id === areaId ? { ...a, visited: true } : a
+              ),
+            }
+          : p
+      ),
+    });
+  },
+  
+  collectAreaShard: (areaId) => {
+    const state = get();
+    set({
+      planets: state.planets.map((p) =>
+        p.id === state.currentPlanetId
+          ? {
+              ...p,
+              shardsCollected: p.shardsCollected + 1,
+              areaStates: p.areaStates.map((a) =>
+                a.id === areaId
+                  ? { ...a, shardsCollected: a.shardsCollected + 1 }
+                  : a
+              ),
+            }
+          : p
+      ),
+      nebuliShards: state.nebuliShards + 1,
+    });
+  },
+  
+  collectAreaKey: (areaId) => {
+    const state = get();
+    set({
+      planets: state.planets.map((p) =>
+        p.id === state.currentPlanetId
+          ? {
+              ...p,
+              keysFound: p.keysFound + 1,
+              areaStates: p.areaStates.map((a) =>
+                a.id === areaId ? { ...a, keyCollected: true } : a
+              ),
+            }
+          : p
+      ),
+    });
+  },
+  
+  defeatAreaEnemy: (areaId) => {
+    const state = get();
+    set({
+      planets: state.planets.map((p) =>
+        p.id === state.currentPlanetId
+          ? {
+              ...p,
+              areaStates: p.areaStates.map((a) =>
+                a.id === areaId
+                  ? { ...a, enemiesDefeated: a.enemiesDefeated + 1 }
+                  : a
+              ),
+            }
+          : p
+      ),
+    });
   },
 }));
