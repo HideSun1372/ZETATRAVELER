@@ -132,10 +132,12 @@ export function Planet() {
   const [playerInput, setPlayerInput] = useState<string[]>([]);
   const [puzzlePhase, setPuzzlePhase] = useState<"showing" | "input" | "success" | "fail">("showing");
   const [puzzleShowIndex, setPuzzleShowIndex] = useState(0);
+  const [spottedAlerts, setSpottedAlerts] = useState<{id: string, x: number, y: number, timestamp: number}[]>([]);
   
   const keysPressed = useRef<Set<string>>(new Set());
   const animationRef = useRef<number>();
   const entryDirection = useRef<string | null>(null);
+  const spottedEnemiesRef = useRef<Set<string>>(new Set());
   
   const CORE_POSITION = { x: Math.floor(MAP_WIDTH / 2), y: Math.floor(MAP_HEIGHT / 2) };
   
@@ -247,6 +249,8 @@ export function Planet() {
 
     setBossSpawned(false);
     setSecretBossSpawned(false);
+    spottedEnemiesRef.current.clear();
+    setSpottedAlerts([]);
 
     if (currentArea.isEntrance && !entryDirection.current) {
       setPlayerPosition({ x: 2 * TILE_SIZE, y: (MAP_HEIGHT / 2) * TILE_SIZE });
@@ -277,6 +281,31 @@ export function Planet() {
     const tileX = Math.floor(x / TILE_SIZE);
     const tileY = Math.floor(y / TILE_SIZE);
     return walls.some((w) => w.x === tileX && w.y === tileY);
+  };
+
+  const hasLineOfSight = (fromX: number, fromY: number, toX: number, toY: number): boolean => {
+    const dx = toX - fromX;
+    const dy = toY - fromY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    const steps = Math.ceil(distance / (TILE_SIZE * 0.5));
+    
+    if (steps === 0) return true;
+    
+    const stepX = dx / steps;
+    const stepY = dy / steps;
+    
+    for (let i = 1; i < steps; i++) {
+      const checkX = fromX + stepX * i;
+      const checkY = fromY + stepY * i;
+      const tileX = Math.floor(checkX / TILE_SIZE);
+      const tileY = Math.floor(checkY / TILE_SIZE);
+      
+      if (walls.some(w => w.x === tileX && w.y === tileY)) {
+        return false;
+      }
+    }
+    
+    return true;
   };
 
   const checkInteractions = (x: number, y: number) => {
@@ -714,9 +743,14 @@ export function Planet() {
       }
 
       const now = Date.now();
+      const newAlerts: {id: string, x: number, y: number, timestamp: number}[] = [];
+      
       setEnemies(prevEnemies => {
         return prevEnemies.map(enemy => {
-          if (defeatedEnemyIds.includes(enemy.id)) return enemy;
+          if (defeatedEnemyIds.includes(enemy.id)) {
+            spottedEnemiesRef.current.delete(enemy.id);
+            return enemy;
+          }
           
           const enemyPixelX = enemy.x * TILE_SIZE;
           const enemyPixelY = enemy.y * TILE_SIZE;
@@ -726,7 +760,27 @@ export function Planet() {
           );
           
           if (distToPlayer > ENEMY_DETECTION_RANGE) {
+            spottedEnemiesRef.current.delete(enemy.id);
             return { ...enemy, isChasing: false };
+          }
+          
+          const canSee = hasLineOfSight(enemyPixelX, enemyPixelY, playerPosition.x, playerPosition.y);
+          
+          if (!canSee) {
+            if (!enemy.isChasing) {
+              return enemy;
+            }
+            return { ...enemy, isChasing: false };
+          }
+          
+          if (!spottedEnemiesRef.current.has(enemy.id)) {
+            spottedEnemiesRef.current.add(enemy.id);
+            newAlerts.push({
+              id: `alert-${enemy.id}-${now}`,
+              x: enemyPixelX,
+              y: enemyPixelY - TILE_SIZE,
+              timestamp: now
+            });
           }
           
           if (!enemy.lastMoveTime || now - enemy.lastMoveTime > ENEMY_MOVE_INTERVAL) {
@@ -765,9 +819,15 @@ export function Planet() {
             return { ...enemy, isChasing: true, lastMoveTime: now };
           }
           
-          return enemy;
+          return { ...enemy, isChasing: true };
         });
       });
+      
+      if (newAlerts.length > 0) {
+        setSpottedAlerts(prev => [...prev, ...newAlerts]);
+      }
+      
+      setSpottedAlerts(prev => prev.filter(alert => now - alert.timestamp < 1000));
 
       animationRef.current = requestAnimationFrame(gameLoop);
     };
@@ -1003,6 +1063,40 @@ export function Planet() {
               </span>
             </div>
           ) : null;
+        })}
+
+        {spottedAlerts.map((alert) => {
+          const age = Date.now() - alert.timestamp;
+          const opacity = Math.max(0, 1 - age / 1000);
+          const scale = 1 + (age / 500) * 0.5;
+          return (
+            <div
+              key={alert.id}
+              className="absolute pointer-events-none flex items-center justify-center"
+              style={{
+                left: alert.x - 8,
+                top: alert.y - 16,
+                width: 48,
+                height: 32,
+                opacity,
+                transform: `scale(${scale})`,
+                zIndex: 100,
+              }}
+            >
+              <div
+                className="px-2 py-1 rounded font-bold text-sm"
+                style={{
+                  backgroundColor: "rgba(255, 0, 0, 0.9)",
+                  color: "#FFFF00",
+                  border: "2px solid #FFFF00",
+                  boxShadow: "0 0 12px #FF0000",
+                  fontFamily: "'Courier New', monospace",
+                }}
+              >
+                !!
+              </div>
+            </div>
+          );
         })}
 
         <div
