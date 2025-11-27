@@ -5,7 +5,13 @@ interface VesselCreatorProps {
   onComplete: (name: string) => void;
 }
 
-type Step = { type: "dialogue"; text: string } | { type: "choice"; text: string; options: string[] } | { type: "input"; text: string } | { type: "summary" };
+type Step = 
+  | { type: "dialogue"; text: string } 
+  | { type: "choice"; text: string; options: string[] } 
+  | { type: "input"; text: string } 
+  | { type: "summary" }
+  | { type: "twist"; text: string }
+  | { type: "final"; text: string };
 
 const bodyOptions = ["ROUND", "TALL", "SMALL", "WIDE"];
 const headOptions = ["GENTLE", "SHARP", "HOLLOW", "BRIGHT"];
@@ -24,6 +30,8 @@ export function VesselCreator({ onComplete }: VesselCreatorProps) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [showBackground, setShowBackground] = useState(false);
   const [bgOpacity, setBgOpacity] = useState(0);
+  const [whiteOverlay, setWhiteOverlay] = useState(0);
+  const [twistTriggered, setTwistTriggered] = useState(false);
   const musicRef = useRef<Howl | null>(null);
   
   const [body, setBody] = useState("");
@@ -55,12 +63,18 @@ export function VesselCreator({ onComplete }: VesselCreatorProps) {
     { type: "choice", text: "HAVE YOU ANSWERED ALL HONESTLY?", options: honestOptions },
     { type: "dialogue", text: "YOU ACKNOWLEDGE THE CHANCES OF PAIN AND SEIZURE." },
     { type: "dialogue", text: "VERY INTERESTING." },
-    { type: "dialogue", text: "YOUR JOURNEY BEGINS NOW." },
+    { type: "dialogue", text: "YOUR CHOICES," },
+    { type: "dialogue", text: "YOUR WONDERFUL CREATION," },
+    { type: "twist", text: "Will now be discarded." },
+    { type: "twist", text: "No one can choose who they are in this world." },
+    { type: "final", text: "Your name is" },
   ];
 
   const currentStep = steps[stepIndex];
   const currentText = currentStep.type === "summary" 
     ? `FORM: ${body}\nNATURE: ${head}\nNAME: ${name}\n\nIS THIS CORRECT?`
+    : currentStep.type === "twist" || currentStep.type === "final"
+    ? currentStep.text
     : currentStep.text;
 
   useEffect(() => {
@@ -95,16 +109,49 @@ export function VesselCreator({ onComplete }: VesselCreatorProps) {
         setBgOpacity(opacity);
       }, 50);
     }
-    
-    return () => {
-      if (stepIndex === steps.length - 1 && musicRef.current) {
-        musicRef.current.fade(musicRef.current.volume(), 0, 1000);
+  }, [stepIndex, showBackground]);
+
+  useEffect(() => {
+    if (currentStep.type === "twist" && !twistTriggered) {
+      setTwistTriggered(true);
+      
+      if (musicRef.current) {
+        musicRef.current.fade(musicRef.current.volume(), 0, 800);
         setTimeout(() => {
           musicRef.current?.stop();
-        }, 1000);
+        }, 800);
       }
-    };
-  }, [stepIndex, showBackground]);
+      
+      let opacity = bgOpacity;
+      const fadeInterval = setInterval(() => {
+        opacity -= 0.02;
+        if (opacity <= 0) {
+          opacity = 0;
+          clearInterval(fadeInterval);
+        }
+        setBgOpacity(opacity);
+      }, 30);
+    }
+  }, [currentStep.type, twistTriggered, bgOpacity]);
+
+  useEffect(() => {
+    if (currentStep.type === "final" && !isTyping && canProceed) {
+      setTimeout(() => {
+        let white = 0;
+        const fadeInterval = setInterval(() => {
+          white += 0.02;
+          if (white >= 1) {
+            white = 1;
+            clearInterval(fadeInterval);
+            setTimeout(() => {
+              onComplete(name);
+            }, 500);
+          }
+          setWhiteOverlay(white);
+        }, 40);
+      }, 1500);
+    }
+  }, [currentStep.type, isTyping, canProceed, name, onComplete]);
 
   useEffect(() => {
     return () => {
@@ -131,13 +178,10 @@ export function VesselCreator({ onComplete }: VesselCreatorProps) {
 
   const handleProceed = () => {
     if (!canProceed) return;
+    if (currentStep.type === "final") return;
 
-    if (currentStep.type === "dialogue") {
-      if (stepIndex === steps.length - 1) {
-        onComplete(name);
-      } else {
-        setStepIndex(stepIndex + 1);
-      }
+    if (currentStep.type === "dialogue" || currentStep.type === "twist") {
+      setStepIndex(stepIndex + 1);
     } else if (currentStep.type === "choice") {
       const options = currentStep.options;
       const selected = options[selectedIndex];
@@ -221,6 +265,9 @@ export function VesselCreator({ onComplete }: VesselCreatorProps) {
     return [];
   };
 
+  const isTwistOrFinal = currentStep.type === "twist" || currentStep.type === "final";
+  const fontFamily = isTwistOrFinal ? "'Open Sans', sans-serif" : "'Courier New', monospace";
+
   return (
     <div className="w-full h-full bg-black select-none relative overflow-hidden">
       <img
@@ -246,8 +293,8 @@ export function VesselCreator({ onComplete }: VesselCreatorProps) {
             </div>
           ) : (
             <p
-              className="text-2xl text-white leading-relaxed"
-              style={{ fontFamily: "'Courier New', monospace" }}
+              className={`leading-relaxed ${isTwistOrFinal ? "text-xl text-white/90" : "text-2xl text-white"}`}
+              style={{ fontFamily }}
             >
               {displayedText}
               {isTyping && <span className="opacity-50">|</span>}
@@ -307,7 +354,7 @@ export function VesselCreator({ onComplete }: VesselCreatorProps) {
           </div>
         )}
 
-        {canProceed && currentStep.type === "dialogue" && (
+        {canProceed && (currentStep.type === "dialogue" || currentStep.type === "twist") && (
           <p
             className="text-gray-400 text-sm mt-12 animate-pulse"
             style={{ fontFamily: "'Courier New', monospace" }}
@@ -316,6 +363,13 @@ export function VesselCreator({ onComplete }: VesselCreatorProps) {
           </p>
         )}
       </div>
+      
+      {whiteOverlay > 0 && (
+        <div 
+          className="absolute inset-0 bg-white z-50 pointer-events-none"
+          style={{ opacity: whiteOverlay }}
+        />
+      )}
     </div>
   );
 }
