@@ -125,6 +125,7 @@ export function Planet() {
   
   const keysPressed = useRef<Set<string>>(new Set());
   const animationRef = useRef<number>();
+  const entryDirection = useRef<string | null>(null);
   
   const CORE_POSITION = { x: Math.floor(MAP_WIDTH / 2), y: Math.floor(MAP_HEIGHT / 2) };
   
@@ -236,8 +237,28 @@ export function Planet() {
     setBossSpawned(false);
     setSecretBossSpawned(false);
 
-    if (currentArea.isEntrance) {
+    if (currentArea.isEntrance && !entryDirection.current) {
       setPlayerPosition({ x: 2 * TILE_SIZE, y: (MAP_HEIGHT / 2) * TILE_SIZE });
+    } else if (entryDirection.current) {
+      const dir = entryDirection.current;
+      let spawnX: number, spawnY: number;
+      
+      if (dir === "north") {
+        spawnX = Math.floor(MAP_WIDTH / 2) * TILE_SIZE;
+        spawnY = (MAP_HEIGHT - 5) * TILE_SIZE;
+      } else if (dir === "south") {
+        spawnX = Math.floor(MAP_WIDTH / 2) * TILE_SIZE;
+        spawnY = 3 * TILE_SIZE;
+      } else if (dir === "east") {
+        spawnX = 2 * TILE_SIZE;
+        spawnY = Math.floor(MAP_HEIGHT / 2) * TILE_SIZE;
+      } else {
+        spawnX = (MAP_WIDTH - 3) * TILE_SIZE;
+        spawnY = Math.floor(MAP_HEIGHT / 2) * TILE_SIZE;
+      }
+      
+      setPlayerPosition({ x: spawnX, y: spawnY });
+      entryDirection.current = null;
     }
   }, [currentAreaId, currentArea, planetTheme, currentPlanetId]);
 
@@ -257,6 +278,7 @@ export function Planet() {
           prev.map((s) => (s.id === shard.id ? { ...s, collected: true } : s))
         );
         collectShard();
+        return;
       }
     }
 
@@ -266,6 +288,7 @@ export function Planet() {
           prev.map((k) => (k.id === key.id ? { ...k, collected: true } : k))
         );
         collectKey();
+        return;
       }
     }
 
@@ -615,6 +638,7 @@ export function Planet() {
       
       if (showDoorPrompt) {
         if (e.key === "z" || e.key === "Z" || e.key === "Enter") {
+          entryDirection.current = showDoorPrompt.direction;
           setShowAreaTransition(true);
           setTimeout(() => {
             changeArea(showDoorPrompt.targetAreaId);
