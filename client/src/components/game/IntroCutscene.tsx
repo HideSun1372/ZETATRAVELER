@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Howl } from "howler";
 
 interface IntroCutsceneProps {
@@ -23,7 +23,7 @@ export function IntroCutscene({ playerName, onComplete }: IntroCutsceneProps) {
   const [showScene, setShowScene] = useState(false);
   const musicRef = useRef<Howl | null>(null);
 
-  const steps: CutsceneStep[] = [
+  const steps: CutsceneStep[] = useMemo(() => [
     { type: "fade_from_white" },
     { type: "dialogue", text: `${playerName}!`, speaker: "???" },
     { type: "pause", duration: 500 },
@@ -37,7 +37,7 @@ export function IntroCutscene({ playerName, onComplete }: IntroCutsceneProps) {
     { type: "pause", duration: 800 },
     { type: "dialogue", text: "The ship is ready. Your journey begins now, Zetatraveler.", speaker: "COMMANDER" },
     { type: "fade_to_black" },
-  ];
+  ], [playerName]);
 
   const currentStep = steps[stepIndex];
 
