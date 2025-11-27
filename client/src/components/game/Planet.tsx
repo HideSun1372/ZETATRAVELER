@@ -132,7 +132,7 @@ export function Planet() {
   const [playerInput, setPlayerInput] = useState<string[]>([]);
   const [puzzlePhase, setPuzzlePhase] = useState<"showing" | "input" | "success" | "fail">("showing");
   const [puzzleShowIndex, setPuzzleShowIndex] = useState(0);
-  const [spottedAlerts, setSpottedAlerts] = useState<{id: string, x: number, y: number, timestamp: number}[]>([]);
+  const [spottedAlerts, setSpottedAlerts] = useState<{id: string, enemyId: string, timestamp: number}[]>([]);
   
   const keysPressed = useRef<Set<string>>(new Set());
   const animationRef = useRef<number>();
@@ -743,7 +743,7 @@ export function Planet() {
       }
 
       const now = Date.now();
-      const newAlerts: {id: string, x: number, y: number, timestamp: number}[] = [];
+      const newAlerts: {id: string, enemyId: string, timestamp: number}[] = [];
       
       setEnemies(prevEnemies => {
         return prevEnemies.map(enemy => {
@@ -767,18 +767,16 @@ export function Planet() {
           const canSee = hasLineOfSight(enemyPixelX, enemyPixelY, playerPosition.x, playerPosition.y);
           
           if (!canSee) {
-            if (!enemy.isChasing) {
-              return enemy;
-            }
+            spottedEnemiesRef.current.delete(enemy.id);
             return { ...enemy, isChasing: false };
           }
           
-          if (!spottedEnemiesRef.current.has(enemy.id)) {
+          const wasNotChasing = !enemy.isChasing && !spottedEnemiesRef.current.has(enemy.id);
+          if (wasNotChasing) {
             spottedEnemiesRef.current.add(enemy.id);
             newAlerts.push({
               id: `alert-${enemy.id}-${now}`,
-              x: enemyPixelX,
-              y: enemyPixelY - TILE_SIZE,
+              enemyId: enemy.id,
               timestamp: now
             });
           }
@@ -1066,16 +1064,21 @@ export function Planet() {
         })}
 
         {spottedAlerts.map((alert) => {
+          const enemy = enemies.find(e => e.id === alert.enemyId);
+          if (!enemy || defeatedEnemyIds.includes(enemy.id)) return null;
+          
           const age = Date.now() - alert.timestamp;
           const opacity = Math.max(0, 1 - age / 1000);
-          const scale = 1 + (age / 500) * 0.5;
+          const scale = 1 + (age / 1000) * 0.5;
+          const yOffset = -(age / 1000) * 20;
+          
           return (
             <div
               key={alert.id}
               className="absolute pointer-events-none flex items-center justify-center"
               style={{
-                left: alert.x - 8,
-                top: alert.y - 16,
+                left: enemy.x * TILE_SIZE - 8,
+                top: enemy.y * TILE_SIZE - TILE_SIZE + yOffset,
                 width: 48,
                 height: 32,
                 opacity,
