@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { useRPG, Enemy } from "../../lib/stores/useRPG";
 import { getPlanetById, PlanetTheme } from "../../lib/data/planets";
+import { generatePlanetAreas, PlanetArea, PlanetLore, LoreNode, getAreaBiomeConfig } from "../../lib/data/planetAreas";
 
 interface Shard {
   id: number;
@@ -31,6 +32,27 @@ interface EnemySpawn {
   isSecretBoss?: boolean;
 }
 
+interface Door {
+  id: string;
+  x: number;
+  y: number;
+  targetAreaId: string;
+  direction: string;
+  type: string;
+  locked: boolean;
+  keyRequired: boolean;
+}
+
+interface LoreObject {
+  id: string;
+  x: number;
+  y: number;
+  type: string;
+  title: string;
+  content: string[];
+  discovered: boolean;
+}
+
 const TILE_SIZE = 32;
 const MAP_WIDTH = 25;
 const MAP_HEIGHT = 18;
@@ -55,6 +77,8 @@ export function Planet() {
     defeatBoss,
     defeatSecretBoss,
     canSealCore,
+    changeArea,
+    discoverLore,
   } = useRPG();
 
   const currentPlanet = planets.find((p) => p.id === currentPlanetId);
@@ -63,12 +87,35 @@ export function Planet() {
   const [shards, setShards] = useState<Shard[]>([]);
   const [keys, setKeys] = useState<Key[]>([]);
   const [enemies, setEnemies] = useState<EnemySpawn[]>([]);
+  const [doors, setDoors] = useState<Door[]>([]);
+  const [loreObjects, setLoreObjects] = useState<LoreObject[]>([]);
   const [showExitPrompt, setShowExitPrompt] = useState(false);
   const [showSealPrompt, setShowSealPrompt] = useState(false);
+  const [showDoorPrompt, setShowDoorPrompt] = useState<Door | null>(null);
+  const [showLoreDialog, setShowLoreDialog] = useState<LoreObject | null>(null);
+  const [showAreaTransition, setShowAreaTransition] = useState(false);
   const [planetSealed, setPlanetSealed] = useState(false);
   const [showVictory, setShowVictory] = useState(false);
   const [bossSpawned, setBossSpawned] = useState(false);
   const [secretBossSpawned, setSecretBossSpawned] = useState(false);
+  
+  const planetLore = useMemo(() => {
+    if (!planetTheme) return null;
+    return generatePlanetAreas(
+      currentPlanetId,
+      planetTheme.name,
+      planetTheme.biome,
+      planetTheme.region,
+      planetTheme.difficulty,
+      currentPlanet?.totalShards || 2,
+      currentPlanet?.minEnemiesRequired || 5,
+      currentPlanet?.keysRequired || 1
+    );
+  }, [currentPlanetId, planetTheme, currentPlanet]);
+  
+  const currentAreaId = currentPlanet?.currentAreaId || `${currentPlanetId}-area-0`;
+  const currentArea = planetLore?.areas.find(a => a.id === currentAreaId);
+  const areaBiome = currentArea ? getAreaBiomeConfig(currentArea) : null;
   
   const [puzzleActive, setPuzzleActive] = useState(false);
   const [puzzleSequence, setPuzzleSequence] = useState<string[]>([]);
@@ -106,47 +153,48 @@ export function Planet() {
   }, []);
 
   useEffect(() => {
-    const seed = currentPlanetId * 12345;
+    if (!currentArea || !planetTheme) return;
+    
+    const seed = currentPlanetId * 12345 + parseInt(currentAreaId.split('-').pop() || '0') * 1000;
     const random = (n: number) => {
       const x = Math.sin(seed + n) * 10000;
       return x - Math.floor(x);
     };
 
-    const shardCount = currentPlanet?.totalShards || 2;
+    const shardCount = currentArea.content.shardCount;
     const newShards: Shard[] = [];
     for (let i = 0; i < shardCount; i++) {
       newShards.push({
         id: i,
-        x: Math.floor(random(i * 2) * (MAP_WIDTH - 4)) + 2,
-        y: Math.floor(random(i * 2 + 1) * (MAP_HEIGHT - 4)) + 2,
+        x: Math.floor(random(i * 2) * (MAP_WIDTH - 6)) + 3,
+        y: Math.floor(random(i * 2 + 1) * (MAP_HEIGHT - 6)) + 3,
         collected: false,
       });
     }
     setShards(newShards);
 
-    const keyCount = planetTheme?.keysRequired || currentPlanet?.keysRequired || 1;
     const newKeys: Key[] = [];
-    for (let i = 0; i < keyCount; i++) {
+    if (currentArea.content.hasKey) {
       newKeys.push({
-        id: i,
-        x: Math.floor(random(i * 2 + 500) * (MAP_WIDTH - 4)) + 2,
-        y: Math.floor(random(i * 2 + 501) * (MAP_HEIGHT - 4)) + 2,
+        id: 0,
+        x: Math.floor(random(500) * (MAP_WIDTH - 6)) + 3,
+        y: Math.floor(random(501) * (MAP_HEIGHT - 6)) + 3,
         collected: false,
       });
     }
     setKeys(newKeys);
 
-    const enemyCount = currentPlanet?.minEnemiesRequired || 5;
+    const enemyCount = currentArea.content.enemyCount;
     const newEnemies: EnemySpawn[] = [];
     const planetEnemies = planetTheme?.enemies || [];
     for (let i = 0; i < enemyCount; i++) {
       const enemyData = planetEnemies[i % planetEnemies.length];
       if (enemyData) {
         newEnemies.push({
-          id: `enemy-${currentPlanetId}-${i}`,
+          id: `enemy-${currentAreaId}-${i}`,
           name: enemyData.name,
-          x: Math.floor(random(i * 3 + 100) * (MAP_WIDTH - 4)) + 2,
-          y: Math.floor(random(i * 3 + 101) * (MAP_HEIGHT - 4)) + 2,
+          x: Math.floor(random(i * 3 + 100) * (MAP_WIDTH - 6)) + 3,
+          y: Math.floor(random(i * 3 + 101) * (MAP_HEIGHT - 6)) + 3,
           hp: enemyData.hp,
           atk: enemyData.atk,
           def: enemyData.def,
@@ -158,8 +206,40 @@ export function Planet() {
     }
     setEnemies(newEnemies);
 
-    setPlayerPosition({ x: 2 * TILE_SIZE, y: (MAP_HEIGHT / 2) * TILE_SIZE });
-  }, [currentPlanetId, planetTheme]);
+    const newDoors: Door[] = currentArea.connections.map((conn, i) => ({
+      id: `door-${currentAreaId}-${i}`,
+      x: conn.direction === "north" ? Math.floor(MAP_WIDTH / 2) : 
+         conn.direction === "south" ? Math.floor(MAP_WIDTH / 2) :
+         conn.direction === "east" ? MAP_WIDTH - 2 : 1,
+      y: conn.direction === "north" ? 1 :
+         conn.direction === "south" ? MAP_HEIGHT - 2 :
+         Math.floor(MAP_HEIGHT / 2),
+      targetAreaId: conn.targetAreaId,
+      direction: conn.direction,
+      type: conn.type,
+      locked: conn.locked || false,
+      keyRequired: conn.keyRequired || false,
+    }));
+    setDoors(newDoors);
+
+    const newLoreObjects: LoreObject[] = currentArea.content.loreNodes.map(node => ({
+      id: node.id,
+      x: node.x,
+      y: node.y,
+      type: node.type,
+      title: node.title,
+      content: node.content,
+      discovered: currentPlanet?.loreDiscovered.includes(node.id) || false,
+    }));
+    setLoreObjects(newLoreObjects);
+
+    setBossSpawned(false);
+    setSecretBossSpawned(false);
+
+    if (currentArea.isEntrance) {
+      setPlayerPosition({ x: 2 * TILE_SIZE, y: (MAP_HEIGHT / 2) * TILE_SIZE });
+    }
+  }, [currentAreaId, currentArea, planetTheme, currentPlanetId]);
 
   const checkCollision = (x: number, y: number): boolean => {
     const tileX = Math.floor(x / TILE_SIZE);
@@ -217,7 +297,29 @@ export function Planet() {
       }
     }
 
-    if (tileX <= 1) {
+    for (const door of doors) {
+      if (Math.abs(tileX - door.x) < 1 && Math.abs(tileY - door.y) < 1) {
+        if (door.locked && door.keyRequired) {
+          if (currentPlanet && currentPlanet.keysFound >= currentPlanet.keysRequired) {
+            setShowDoorPrompt(door);
+          }
+        } else {
+          setShowDoorPrompt(door);
+        }
+        return;
+      }
+    }
+
+    for (const lore of loreObjects) {
+      if (!lore.discovered && Math.abs(tileX - lore.x) < 1.5 && Math.abs(tileY - lore.y) < 1.5) {
+        setShowLoreDialog(lore);
+        setLoreObjects(prev => prev.map(l => l.id === lore.id ? { ...l, discovered: true } : l));
+        discoverLore(lore.id);
+        return;
+      }
+    }
+
+    if (tileX <= 1 && currentArea?.isEntrance) {
       setShowExitPrompt(true);
     }
     
@@ -510,6 +612,27 @@ export function Planet() {
         return;
       }
       
+      if (showDoorPrompt) {
+        if (e.key === "z" || e.key === "Z" || e.key === "Enter") {
+          setShowAreaTransition(true);
+          setTimeout(() => {
+            changeArea(showDoorPrompt.targetAreaId);
+            setShowDoorPrompt(null);
+            setShowAreaTransition(false);
+          }, 500);
+        } else if (e.key === "x" || e.key === "X" || e.key === "Shift") {
+          setShowDoorPrompt(null);
+        }
+        return;
+      }
+      
+      if (showLoreDialog) {
+        if (e.key === "z" || e.key === "Z" || e.key === "Enter" || e.key === "x" || e.key === "X" || e.key === "Shift") {
+          setShowLoreDialog(null);
+        }
+        return;
+      }
+      
       keysPressed.current.add(e.key.toLowerCase());
     };
 
@@ -524,11 +647,11 @@ export function Planet() {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [showExitPrompt, showSealPrompt, showVictory, puzzleActive, puzzlePhase, playerInput, puzzleSequence]);
+  }, [showExitPrompt, showSealPrompt, showVictory, puzzleActive, puzzlePhase, playerInput, puzzleSequence, showDoorPrompt, showLoreDialog, changeArea]);
 
   useEffect(() => {
     const gameLoop = () => {
-      if (showExitPrompt) {
+      if (showExitPrompt || showDoorPrompt || showLoreDialog || showAreaTransition) {
         animationRef.current = requestAnimationFrame(gameLoop);
         return;
       }
@@ -564,7 +687,7 @@ export function Planet() {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [playerPosition, showExitPrompt]);
+  }, [playerPosition, showExitPrompt, showDoorPrompt, showLoreDialog, showAreaTransition]);
 
   const getPlanetColor = () => {
     return planetTheme?.groundColor || "#1a1a2e";
@@ -587,10 +710,22 @@ export function Planet() {
           {currentPlanet?.name || "UNKNOWN"}
         </div>
         <div
-          className="text-sm text-gray-400"
+          className="text-lg text-white"
           style={{ fontFamily: "'Courier New', monospace" }}
         >
-          {planetTheme?.biome || "Unknown Biome"} | Difficulty: {"★".repeat(planetTheme?.difficulty || 1)}
+          {currentArea?.name || "Entrance"}
+        </div>
+        <div
+          className="text-xs text-gray-500 italic max-w-md"
+          style={{ fontFamily: "'Courier New', monospace" }}
+        >
+          {currentArea?.description || ""}
+        </div>
+        <div
+          className="text-sm text-gray-400 mt-1"
+          style={{ fontFamily: "'Courier New', monospace" }}
+        >
+          {planetTheme?.biome || "Unknown Biome"} | Difficulty: {"★".repeat(planetTheme?.difficulty || 1)} | Area {(planetLore?.areas.findIndex(a => a.id === currentAreaId) || 0) + 1}/{planetLore?.areas.length || 1}
         </div>
       </div>
 
@@ -666,6 +801,51 @@ export function Planet() {
             />
           ) : null
         )}
+
+        {doors.map((door) => (
+          <div
+            key={door.id}
+            className="absolute flex items-center justify-center"
+            style={{
+              left: door.x * TILE_SIZE,
+              top: door.y * TILE_SIZE,
+              width: TILE_SIZE,
+              height: TILE_SIZE,
+              backgroundColor: door.locked && door.keyRequired && currentPlanet && currentPlanet.keysFound < currentPlanet.keysRequired
+                ? "#663300"
+                : door.type === "portal" ? "#7B68EE" : door.type === "gate" ? "#4169E1" : "#8B4513",
+              border: door.locked && door.keyRequired && currentPlanet && currentPlanet.keysFound < currentPlanet.keysRequired
+                ? "2px solid #FF0000"
+                : "2px solid #FFD700",
+              boxShadow: door.type === "portal" ? "0 0 15px #7B68EE" : "none",
+            }}
+          >
+            <span className="text-white text-xl">
+              {door.direction === "north" ? "↑" : door.direction === "south" ? "↓" : door.direction === "east" ? "→" : "←"}
+            </span>
+          </div>
+        ))}
+
+        {loreObjects.map((lore) => (
+          <div
+            key={lore.id}
+            className={`absolute flex items-center justify-center ${lore.discovered ? 'opacity-50' : 'animate-pulse'}`}
+            style={{
+              left: lore.x * TILE_SIZE,
+              top: lore.y * TILE_SIZE,
+              width: TILE_SIZE,
+              height: TILE_SIZE,
+              backgroundColor: lore.discovered ? "#444" : "#00CED1",
+              border: `2px solid ${lore.discovered ? "#666" : "#00FFFF"}`,
+              boxShadow: lore.discovered ? "none" : "0 0 12px #00FFFF",
+              borderRadius: lore.type === "memory" || lore.type === "echo" ? "50%" : "4px",
+            }}
+          >
+            <span className="text-xs">
+              {lore.type === "tablet" ? "📜" : lore.type === "terminal" ? "💻" : lore.type === "memory" ? "💫" : lore.type === "inscription" ? "🔮" : lore.type === "echo" ? "👁" : "🗿"}
+            </span>
+          </div>
+        ))}
 
         {enemies.map((enemy) => {
           const isDefeated = defeatedEnemyIds.includes(enemy.id);
@@ -767,6 +947,79 @@ export function Planet() {
                 Z/Enter: Begin | X/Shift: Cancel
               </p>
             </div>
+          </div>
+        )}
+
+        {showDoorPrompt && (
+          <div
+            className="absolute inset-0 flex items-center justify-center"
+            style={{ backgroundColor: "rgba(0,0,0,0.8)" }}
+          >
+            <div className="bg-black border-4 border-blue-400 p-6 text-center">
+              <p
+                className="text-blue-400 text-xl mb-2"
+                style={{ fontFamily: "'Courier New', monospace" }}
+              >
+                {showDoorPrompt.type === "portal" ? "PORTAL" : showDoorPrompt.type === "gate" ? "GATE" : "PASSAGE"}
+              </p>
+              <p
+                className="text-white text-lg mb-4"
+                style={{ fontFamily: "'Courier New', monospace" }}
+              >
+                Travel to next area?
+              </p>
+              <p
+                className="text-gray-400"
+                style={{ fontFamily: "'Courier New', monospace" }}
+              >
+                Z/Enter: Yes | X/Shift: No
+              </p>
+            </div>
+          </div>
+        )}
+
+        {showLoreDialog && (
+          <div
+            className="absolute inset-0 flex items-center justify-center"
+            style={{ backgroundColor: "rgba(0,0,0,0.9)" }}
+          >
+            <div className="bg-black border-4 border-cyan-400 p-6 text-center max-w-[500px]">
+              <p
+                className="text-cyan-400 text-lg mb-4"
+                style={{ fontFamily: "'Courier New', monospace" }}
+              >
+                {showLoreDialog.title}
+              </p>
+              {showLoreDialog.content.map((line, i) => (
+                <p
+                  key={i}
+                  className="text-white text-sm mb-2"
+                  style={{ fontFamily: "'Courier New', monospace" }}
+                >
+                  {line}
+                </p>
+              ))}
+              <p
+                className="text-gray-400 mt-4"
+                style={{ fontFamily: "'Courier New', monospace" }}
+              >
+                Press any key to close
+              </p>
+            </div>
+          </div>
+        )}
+
+        {showAreaTransition && (
+          <div
+            className="absolute inset-0 flex items-center justify-center bg-black"
+            style={{ zIndex: 100 }}
+          >
+            <p
+              className="text-white text-2xl animate-pulse"
+              style={{ fontFamily: "'Courier New', monospace" }}
+            >
+              ...
+            </p>
           </div>
         )}
 
