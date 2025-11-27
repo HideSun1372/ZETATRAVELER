@@ -768,11 +768,11 @@ export function Planet() {
           }}
         />
 
-        {shards.map((shard) =>
+        {!isGamePaused && shards.map((shard) =>
           !shard.collected ? (
             <div
               key={`shard-${shard.id}`}
-              className={`absolute ${!isGamePaused ? 'animate-pulse' : ''}`}
+              className="absolute animate-pulse"
               style={{
                 left: shard.x * TILE_SIZE + 8,
                 top: shard.y * TILE_SIZE + 8,
@@ -780,17 +780,17 @@ export function Planet() {
                 height: TILE_SIZE - 16,
                 backgroundColor: "#AA00FF",
                 borderRadius: "50%",
-                boxShadow: isGamePaused ? "none" : "0 0 10px #AA00FF",
+                boxShadow: "0 0 10px #AA00FF",
               }}
             />
           ) : null
         )}
 
-        {keys.map((key) =>
+        {!isGamePaused && keys.map((key) =>
           !key.collected ? (
             <div
               key={`key-${key.id}`}
-              className={`absolute ${!isGamePaused ? 'animate-bounce' : ''}`}
+              className="absolute animate-bounce"
               style={{
                 left: key.x * TILE_SIZE + 6,
                 top: key.y * TILE_SIZE + 4,
@@ -798,14 +798,14 @@ export function Planet() {
                 height: TILE_SIZE - 8,
                 backgroundColor: "#FFD700",
                 borderRadius: "4px",
-                boxShadow: isGamePaused ? "none" : "0 0 12px #FFD700",
+                boxShadow: "0 0 12px #FFD700",
                 border: "2px solid #FFA500",
               }}
             />
           ) : null
         )}
 
-        {doors.map((door) => (
+        {!isGamePaused && doors.map((door) => (
           <div
             key={door.id}
             className="absolute flex items-center justify-center"
@@ -829,10 +829,10 @@ export function Planet() {
           </div>
         ))}
 
-        {loreObjects.map((lore) => (
+        {!isGamePaused && loreObjects.map((lore) => (
           <div
             key={lore.id}
-            className={`absolute flex items-center justify-center ${lore.discovered ? 'opacity-50' : (!isGamePaused ? 'animate-pulse' : '')}`}
+            className={`absolute flex items-center justify-center ${lore.discovered ? 'opacity-50' : 'animate-pulse'}`}
             style={{
               left: lore.x * TILE_SIZE,
               top: lore.y * TILE_SIZE,
@@ -840,7 +840,7 @@ export function Planet() {
               height: TILE_SIZE,
               backgroundColor: lore.discovered ? "#444" : "#00CED1",
               border: `2px solid ${lore.discovered ? "#666" : "#00FFFF"}`,
-              boxShadow: lore.discovered || isGamePaused ? "none" : "0 0 12px #00FFFF",
+              boxShadow: lore.discovered ? "none" : "0 0 12px #00FFFF",
               borderRadius: lore.type === "memory" || lore.type === "echo" ? "50%" : "4px",
             }}
           >
@@ -850,20 +850,20 @@ export function Planet() {
           </div>
         ))}
 
-        {enemies.map((enemy) => {
+        {!isGamePaused && enemies.map((enemy) => {
           const isDefeated = defeatedEnemyIds.includes(enemy.id);
           const isBossEnemy = enemy.isBoss || enemy.isSecretBoss;
           return !isDefeated ? (
             <div
               key={enemy.id}
-              className={`absolute flex items-center justify-center ${isBossEnemy && !isGamePaused ? 'animate-pulse' : ''}`}
+              className={`absolute flex items-center justify-center ${isBossEnemy ? 'animate-pulse' : ''}`}
               style={{
                 left: enemy.x * TILE_SIZE - (isBossEnemy ? TILE_SIZE/2 : 0),
                 top: enemy.y * TILE_SIZE - (isBossEnemy ? TILE_SIZE/2 : 0),
                 width: isBossEnemy ? TILE_SIZE * 2 : TILE_SIZE,
                 height: isBossEnemy ? TILE_SIZE * 2 : TILE_SIZE,
                 backgroundColor: enemy.color || "#FF0000",
-                boxShadow: isGamePaused ? 'none' : `0 0 ${isBossEnemy ? '16px' : '8px'} ${enemy.color || "#FF0000"}`,
+                boxShadow: `0 0 ${isBossEnemy ? '16px' : '8px'} ${enemy.color || "#FF0000"}`,
                 border: isBossEnemy ? '3px solid #FFD700' : 'none',
                 zIndex: isBossEnemy ? 10 : 1,
               }}
@@ -888,9 +888,9 @@ export function Planet() {
           }}
         />
 
-        {allEnemiesDefeated && !planetSealed && (
+        {!isGamePaused && allEnemiesDefeated && !planetSealed && (
           <div
-            className={`absolute ${!isGamePaused ? 'animate-pulse' : ''}`}
+            className="absolute animate-pulse"
             style={{
               left: CORE_POSITION.x * TILE_SIZE,
               top: CORE_POSITION.y * TILE_SIZE,
@@ -898,7 +898,7 @@ export function Planet() {
               height: TILE_SIZE,
               backgroundColor: "#FFD700",
               borderRadius: "50%",
-              boxShadow: isGamePaused ? "none" : "0 0 20px #FFD700, 0 0 40px #FF8C00",
+              boxShadow: "0 0 20px #FFD700, 0 0 40px #FF8C00",
             }}
           />
         )}
