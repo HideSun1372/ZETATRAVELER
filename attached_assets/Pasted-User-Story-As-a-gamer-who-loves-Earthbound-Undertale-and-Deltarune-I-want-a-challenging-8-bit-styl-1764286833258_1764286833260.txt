@@ -1,0 +1,77 @@
+User Story
+As a gamer who loves Earthbound, Undertale and Deltarune, I want a challenging 8-bit styled desktop RPG where I explore 50 alien planets to collect Nebuli and seal a galaxy-threatening fracture, with meaningful pacifist / neutral / genocide routes that dramatically change the ending, so that my moral choices have massive consequences and replay value.
+Summary
+ZETATRAVELER is a single-player desktop RPG with top-down 2D exploration and 3D real-time bullet-hell battles. The player, accompanied by three non-combat Travelers and guided by Lakine, must visit 50 procedurally-ordered alien planets to collect 75 Nebuli (via 25 shards per planet + 1 full Nebuli from each CORE fountain) in order to seal the galactic fracture at Station Delta.
+Combat is avoidance + attack + ACT/Talk + Spare-wand; killing enemies grants XP and levels (max 100), sparing grants none. Three distinct endings (Pacifist, Genocide, Neutral) are determined by the player’s kill/spare choices across the entire run.
+Core User Flow
+
+New Game → Tutorial with Lakine → Recruit 3 Travelers → Land on Planet 1
+Explore top-down 8-bit planet (size ≈ Deltarune Dark World)
+Collect 25 visible Nebuli Shards scattered in regions
+Navigate visible enemies → trigger 1v1 3D bullet-hell battle (dodge, shoot, Talk, Spare-wand)
+Reach guarded CORE → clear every enemy in CORE zone (kill or spare)
+Seal fountain with SOUL → automatically warp to next planet + gain 1 full Nebuli
+Repeat until 75 Nebuli collected → Station Delta → seal fracture
+Ending sequence (Pacifist rescue rush, Genocide NEBULIN boss, or Neutral escape)
+
+Functional Requirements
+
+50 main planets + 1 secret post-game Planet 51 (no Nebuli)
+Top-down 2D overworld navigation (arrow keys / WASD)
+Visible on-screen enemies; touching triggers 1v1 3D battle screen
+Real-time 3D bullet-hell combat with dodge, projectile attack, Talk (dialogue tree), Spare wand (touch enemy after successful Talk)
+Leveling system (1→100) only from killing enemies → +HP, +Damage, +Defense per level
+Pacifist flag: Level must remain 1 with 0 XP for entire run
+Genocide detection per planet (all enemies killed) → shops disabled, puzzles auto-solved, flavor text changes
+25 Nebuli Shards visibly placed per planet (never from fights or puzzles)
+Challenging puzzles required for progression (eye-closing puzzles, laser-dodge sequences, multi-step logic, etc.)
+CORE fountain sealing only possible after 100% enemy clear in CORE zone
+Three Travelers (story/dialogue only, no combat)
+Lakine tutorial manager provides controls and moral choice hints
+Post-seal endings:
+– Pacifist: 50-planet rescue rush mini-game (carry aliens to ship while dodging Nebulite rain; movement slows with each planet saved)
+– Genocide: Final boss NEBULIN
+– Neutral: Escape sequence to Bunker Theta
+3 save slots via Steam Cloud
+Export / Import save as JSON file
+Login system (Steam account)
+
+Expected Behavior
+
+Killing any enemy grants XP; sparing grants 0 XP
+Player on pacifist route (Level 1) can still use shops and must solve all puzzles manually
+Player on genocide route per planet sees “There was no one.” at shops and auto-completed puzzles
+Sealing a CORE fountain instantly warps to next planet in sequence
+Collecting 75th Nebuli triggers Station Delta sequence
+Rare chance for “hidden” planet discovery bypassing fountain warp
+Secret Planet 51 accessible only on New Game+
+
+Design/UI Components (8-bit aesthetic)
+
+Top-down overworld: 8-bit tiles, visible enemies with patrol patterns
+Battle screen: sudden shift to 3D arena, player SOUL (red heart style), projectile visuals, Spare wand icon, Talk dialogue box
+HUD: HP bar, Level/XP, Nebuli counter (shards + full), spare/kill counter (hidden)
+Pause menu: Save/Load (3 slots), Export/Import JSON, Controls, Quit
+Traveler & Lakine dialogue portraits (Earthbound-style)
+Ending-specific cutscenes and music stingers
+
+Acceptance Criteria
+
+Player can complete a full run on pacifist (Level 1), genocide (Level 100), and neutral routes with correct ending triggers
+All 50 planets are reachable and contain exactly 25 visible shards + 1 CORE Nebuli
+CORE fountain cannot be sealed while any enemy remains alive in the CORE zone
+Pacifist ending aborts instantly if even one alien dies during rescue phase
+Genocide services (shops) are disabled and puzzles auto-solved puzzles on any planet where player killed every enemy
+Save files work with 3 slots via Steam Cloud and can be exported/imported as JSON
+Controls: Arrows/WASD movement, Z/Enter confirm, X/Shift cancel/Talk
+Game detects and displays secret Planet 51 on New Game+
+All puzzles are non-trivial (multiple steps, red herrings, or timing elements)
+
+Success Metrics (Post-Launch)
+
+≥70% of players attempt multiple routes
+Average playtime 18–30 hours for first completion
+≥30% of players reach true pacifist ending
+≥15% reach Level 100 (genocide)
+Positive Steam reviews mentioning “meaningful choices” and “challenging but fair puzzles”
+<5% save-file corruption reports
