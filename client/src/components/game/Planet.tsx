@@ -698,6 +698,8 @@ export function Planet() {
     return planetTheme?.secondaryColor || "#333366";
   };
 
+  const isGamePaused = showExitPrompt || !!showDoorPrompt || !!showLoreDialog || showSealPrompt || showAreaTransition || puzzleActive || showVictory;
+
   return (
     <div className="w-full h-full bg-black flex flex-col items-center select-none overflow-hidden py-2">
       <div className="text-center mb-2 flex-shrink-0">
@@ -770,7 +772,7 @@ export function Planet() {
           !shard.collected ? (
             <div
               key={`shard-${shard.id}`}
-              className="absolute animate-pulse"
+              className={`absolute ${!isGamePaused ? 'animate-pulse' : ''}`}
               style={{
                 left: shard.x * TILE_SIZE + 8,
                 top: shard.y * TILE_SIZE + 8,
@@ -778,7 +780,7 @@ export function Planet() {
                 height: TILE_SIZE - 16,
                 backgroundColor: "#AA00FF",
                 borderRadius: "50%",
-                boxShadow: "0 0 10px #AA00FF",
+                boxShadow: isGamePaused ? "none" : "0 0 10px #AA00FF",
               }}
             />
           ) : null
@@ -788,7 +790,7 @@ export function Planet() {
           !key.collected ? (
             <div
               key={`key-${key.id}`}
-              className="absolute animate-bounce"
+              className={`absolute ${!isGamePaused ? 'animate-bounce' : ''}`}
               style={{
                 left: key.x * TILE_SIZE + 6,
                 top: key.y * TILE_SIZE + 4,
@@ -796,7 +798,7 @@ export function Planet() {
                 height: TILE_SIZE - 8,
                 backgroundColor: "#FFD700",
                 borderRadius: "4px",
-                boxShadow: "0 0 12px #FFD700",
+                boxShadow: isGamePaused ? "none" : "0 0 12px #FFD700",
                 border: "2px solid #FFA500",
               }}
             />
@@ -830,7 +832,7 @@ export function Planet() {
         {loreObjects.map((lore) => (
           <div
             key={lore.id}
-            className={`absolute flex items-center justify-center ${lore.discovered ? 'opacity-50' : 'animate-pulse'}`}
+            className={`absolute flex items-center justify-center ${lore.discovered ? 'opacity-50' : (!isGamePaused ? 'animate-pulse' : '')}`}
             style={{
               left: lore.x * TILE_SIZE,
               top: lore.y * TILE_SIZE,
@@ -838,7 +840,7 @@ export function Planet() {
               height: TILE_SIZE,
               backgroundColor: lore.discovered ? "#444" : "#00CED1",
               border: `2px solid ${lore.discovered ? "#666" : "#00FFFF"}`,
-              boxShadow: lore.discovered ? "none" : "0 0 12px #00FFFF",
+              boxShadow: lore.discovered || isGamePaused ? "none" : "0 0 12px #00FFFF",
               borderRadius: lore.type === "memory" || lore.type === "echo" ? "50%" : "4px",
             }}
           >
@@ -854,14 +856,14 @@ export function Planet() {
           return !isDefeated ? (
             <div
               key={enemy.id}
-              className={`absolute flex items-center justify-center ${isBossEnemy ? 'animate-pulse' : ''}`}
+              className={`absolute flex items-center justify-center ${isBossEnemy && !isGamePaused ? 'animate-pulse' : ''}`}
               style={{
                 left: enemy.x * TILE_SIZE - (isBossEnemy ? TILE_SIZE/2 : 0),
                 top: enemy.y * TILE_SIZE - (isBossEnemy ? TILE_SIZE/2 : 0),
                 width: isBossEnemy ? TILE_SIZE * 2 : TILE_SIZE,
                 height: isBossEnemy ? TILE_SIZE * 2 : TILE_SIZE,
                 backgroundColor: enemy.color || "#FF0000",
-                boxShadow: `0 0 ${isBossEnemy ? '16px' : '8px'} ${enemy.color || "#FF0000"}`,
+                boxShadow: isGamePaused ? 'none' : `0 0 ${isBossEnemy ? '16px' : '8px'} ${enemy.color || "#FF0000"}`,
                 border: isBossEnemy ? '3px solid #FFD700' : 'none',
                 zIndex: isBossEnemy ? 10 : 1,
               }}
@@ -888,7 +890,7 @@ export function Planet() {
 
         {allEnemiesDefeated && !planetSealed && (
           <div
-            className="absolute animate-pulse"
+            className={`absolute ${!isGamePaused ? 'animate-pulse' : ''}`}
             style={{
               left: CORE_POSITION.x * TILE_SIZE,
               top: CORE_POSITION.y * TILE_SIZE,
@@ -896,7 +898,7 @@ export function Planet() {
               height: TILE_SIZE,
               backgroundColor: "#FFD700",
               borderRadius: "50%",
-              boxShadow: "0 0 20px #FFD700, 0 0 40px #FF8C00",
+              boxShadow: isGamePaused ? "none" : "0 0 20px #FFD700, 0 0 40px #FF8C00",
             }}
           />
         )}
