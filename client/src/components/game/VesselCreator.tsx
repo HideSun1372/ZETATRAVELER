@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { Howl } from "howler";
 
 interface VesselCreatorProps {
   onComplete: (name: string) => void;
@@ -21,6 +22,9 @@ export function VesselCreator({ onComplete }: VesselCreatorProps) {
   const [isTyping, setIsTyping] = useState(true);
   const [canProceed, setCanProceed] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [showBackground, setShowBackground] = useState(false);
+  const [bgOpacity, setBgOpacity] = useState(0);
+  const musicRef = useRef<Howl | null>(null);
   
   const [body, setBody] = useState("");
   const [head, setHead] = useState("");
@@ -65,6 +69,51 @@ export function VesselCreator({ onComplete }: VesselCreatorProps) {
     setCanProceed(false);
     setSelectedIndex(0);
   }, [stepIndex]);
+
+  useEffect(() => {
+    if (stepIndex === 2 && !isTyping && canProceed && !showBackground) {
+      setShowBackground(true);
+      
+      if (!musicRef.current) {
+        musicRef.current = new Howl({
+          src: ["/sounds/vessel_music.mp3"],
+          loop: true,
+          volume: 0,
+        });
+      }
+      
+      musicRef.current.play();
+      musicRef.current.fade(0, 0.6, 3000);
+      
+      let opacity = 0;
+      const fadeInterval = setInterval(() => {
+        opacity += 0.02;
+        if (opacity >= 0.4) {
+          opacity = 0.4;
+          clearInterval(fadeInterval);
+        }
+        setBgOpacity(opacity);
+      }, 50);
+    }
+    
+    return () => {
+      if (stepIndex === steps.length - 1 && musicRef.current) {
+        musicRef.current.fade(musicRef.current.volume(), 0, 1000);
+        setTimeout(() => {
+          musicRef.current?.stop();
+        }, 1000);
+      }
+    };
+  }, [stepIndex, isTyping, canProceed, showBackground]);
+
+  useEffect(() => {
+    return () => {
+      if (musicRef.current) {
+        musicRef.current.stop();
+        musicRef.current.unload();
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!isTyping) return;
@@ -173,9 +222,19 @@ export function VesselCreator({ onComplete }: VesselCreatorProps) {
   };
 
   return (
-    <div className="w-full h-full bg-black select-none relative">
+    <div className="w-full h-full bg-black select-none relative overflow-hidden">
+      {showBackground && (
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{
+            backgroundImage: "url('/textures/vessel_bg.jpg')",
+            opacity: bgOpacity,
+            transition: "opacity 0.1s ease-out",
+          }}
+        />
+      )}
       <div 
-        className="absolute left-1/2 text-center max-w-xl px-4"
+        className="absolute left-1/2 text-center max-w-xl px-4 z-10"
         style={{ top: "35%", transform: "translateX(-50%)" }}
       >
         <div style={{ minHeight: "80px" }}>
