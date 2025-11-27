@@ -45,6 +45,17 @@ Preferred communication style: Simple, everyday language.
 - Difficulty scaling from 1-5 stars across regions
 - 150 unique enemy types total with spare dialogue
 
+**Multi-Room Planet System** (NEW):
+- Each planet now contains 3-6 interconnected areas based on difficulty
+- Biome catalog (`client/src/lib/data/biomes.ts`) with 10 visual themes: forest, cave, ruins, crystalline, desert, ice, volcanic, void, tech, garden
+- Area generation system (`client/src/lib/data/planetAreas.ts`) creates procedural layouts with unique content per room
+- Room connections via doors, portals, and gates with directional arrows (north, south, east, west)
+- Content distribution: enemies, shards, keys spread across rooms; boss spawns only in final "boss lair" area
+- Environmental lore system with discoverable lore objects (tablets, terminals, memories, inscriptions, echoes, relics)
+- Each planet has a thematic story arc revealed through lore pieces across areas
+- Store tracks: current area ID, visited areas, enemies defeated per area, collected items, discovered lore
+- UI shows current area name, description, and area progress (e.g., "Area 2/4")
+
 ### Backend Architecture
 
 **Server Framework**: Express.js with TypeScript
