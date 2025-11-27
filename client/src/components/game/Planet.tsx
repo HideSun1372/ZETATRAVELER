@@ -211,8 +211,8 @@ export function Planet() {
       x: conn.direction === "north" ? Math.floor(MAP_WIDTH / 2) : 
          conn.direction === "south" ? Math.floor(MAP_WIDTH / 2) :
          conn.direction === "east" ? MAP_WIDTH - 2 : 1,
-      y: conn.direction === "north" ? 1 :
-         conn.direction === "south" ? MAP_HEIGHT - 2 :
+      y: conn.direction === "north" ? 2 :
+         conn.direction === "south" ? MAP_HEIGHT - 4 :
          Math.floor(MAP_HEIGHT / 2),
       targetAreaId: conn.targetAreaId,
       direction: conn.direction,
