@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { PLANET_DATA } from "../data/planets";
 
-export type GamePhase = "vessel" | "menu" | "hub" | "planet" | "battle" | "gameover";
+export type GamePhase = "vessel" | "intro" | "menu" | "hub" | "planet" | "battle" | "gameover";
 export type Route = "pacifist" | "neutral" | "genocide";
 
 export interface Enemy {
