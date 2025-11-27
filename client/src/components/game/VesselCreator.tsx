@@ -79,6 +79,11 @@ export function VesselCreator({ onComplete }: VesselCreatorProps) {
     : currentStep.text;
 
   useEffect(() => {
+    setWhiteOverlay(0);
+    setBgOpacity(0);
+  }, []);
+
+  useEffect(() => {
     if (stepIndex === 0 && !droneStarted) {
       setDroneStarted(true);
       droneRef.current = new Howl({
