@@ -282,9 +282,34 @@ export const useRPG = create<RPGState>((set, get) => ({
   
   gainXP: (amount) => {
     const state = get();
-    const newXP = state.xp + amount;
-    if (newXP >= state.xpToNextLevel) {
-      get().levelUp();
+    if (state.level >= 100) return;
+    
+    let newXP = state.xp + amount;
+    let currentLevel = state.level;
+    let currentXPToNext = state.xpToNextLevel;
+    let hpGained = 0;
+    let atkGained = 0;
+    let defGained = 0;
+    
+    while (newXP >= currentXPToNext && currentLevel < 100) {
+      newXP -= currentXPToNext;
+      currentLevel += 1;
+      currentXPToNext = calculateXPToNextLevel(currentLevel);
+      hpGained += 4;
+      atkGained += 2;
+      defGained += 1;
+    }
+    
+    if (currentLevel !== state.level) {
+      set({
+        level: currentLevel,
+        xp: currentLevel >= 100 ? 0 : newXP,
+        xpToNextLevel: currentXPToNext,
+        maxHp: state.maxHp + hpGained,
+        hp: state.maxHp + hpGained,
+        atk: state.atk + atkGained,
+        def: state.def + defGained,
+      });
     } else {
       set({ xp: newXP });
     }
@@ -292,7 +317,8 @@ export const useRPG = create<RPGState>((set, get) => ({
   
   levelUp: () => {
     const state = get();
-    const newLevel = Math.min(100, state.level + 1);
+    if (state.level >= 100) return;
+    const newLevel = state.level + 1;
     set({
       level: newLevel,
       xp: 0,
@@ -406,9 +432,11 @@ export const useRPG = create<RPGState>((set, get) => ({
     
     if (outcome === "victory" && state.currentEnemy) {
       const xpGain = 5 + state.currentEnemy.maxHp;
+      const goldGain = 5 + state.currentEnemy.maxHp;
       get().gainXP(xpGain);
       set({
         totalKills: state.totalKills + 1,
+        gold: state.gold + goldGain,
         defeatedEnemyIds: enemyId ? [...state.defeatedEnemyIds, enemyId] : state.defeatedEnemyIds,
         planets: state.planets.map((p) =>
           p.id === state.currentPlanetId
@@ -417,8 +445,12 @@ export const useRPG = create<RPGState>((set, get) => ({
         ),
       });
     } else if (outcome === "spare" && state.currentEnemy) {
+      const goldGain = 3 + Math.floor(state.currentEnemy.maxHp / 2);
+      const xpGain = Math.floor((5 + state.currentEnemy.maxHp) * 0.5);
+      get().gainXP(xpGain);
       set({
         totalSpares: state.totalSpares + 1,
+        gold: state.gold + goldGain,
         defeatedEnemyIds: enemyId ? [...state.defeatedEnemyIds, enemyId] : state.defeatedEnemyIds,
         planets: state.planets.map((p) =>
           p.id === state.currentPlanetId
@@ -478,12 +510,25 @@ export const useRPG = create<RPGState>((set, get) => ({
   
   updateRoute: () => {
     const state = get();
-    if (state.totalKills === 0 && state.level === 1) {
+    const totalEncounters = state.totalKills + state.totalSpares;
+    
+    if (totalEncounters === 0) {
+      return;
+    }
+    
+    if (state.totalKills === 0) {
       set({ currentRoute: "pacifist" });
-    } else if (state.totalKills >= state.totalSpares * 2) {
+    } else if (state.totalSpares === 0 && state.totalKills >= 5) {
       set({ currentRoute: "genocide" });
     } else {
-      set({ currentRoute: "neutral" });
+      const killRatio = state.totalKills / totalEncounters;
+      if (killRatio >= 0.8) {
+        set({ currentRoute: "genocide" });
+      } else if (killRatio <= 0.1) {
+        set({ currentRoute: "pacifist" });
+      } else {
+        set({ currentRoute: "neutral" });
+      }
     }
   },
   
