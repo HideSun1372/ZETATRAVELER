@@ -30,6 +30,8 @@ interface EnemySpawn {
   spareDialogue: string[];
   isBoss?: boolean;
   isSecretBoss?: boolean;
+  isChasing?: boolean;
+  lastMoveTime?: number;
 }
 
 interface Door {
@@ -58,6 +60,9 @@ const TILE_SIZE = 32;
 const MAP_WIDTH = 25;
 const MAP_HEIGHT = 18;
 const PLAYER_SPEED = 4;
+const ENEMY_SPEED = 1.5;
+const ENEMY_DETECTION_RANGE = 6 * TILE_SIZE;
+const ENEMY_MOVE_INTERVAL = 50;
 
 export function Planet() {
   const {
@@ -708,6 +713,62 @@ export function Planet() {
         }
       }
 
+      const now = Date.now();
+      setEnemies(prevEnemies => {
+        return prevEnemies.map(enemy => {
+          if (defeatedEnemyIds.includes(enemy.id)) return enemy;
+          
+          const enemyPixelX = enemy.x * TILE_SIZE;
+          const enemyPixelY = enemy.y * TILE_SIZE;
+          const distToPlayer = Math.sqrt(
+            Math.pow(playerPosition.x - enemyPixelX, 2) + 
+            Math.pow(playerPosition.y - enemyPixelY, 2)
+          );
+          
+          if (distToPlayer > ENEMY_DETECTION_RANGE) {
+            return { ...enemy, isChasing: false };
+          }
+          
+          if (!enemy.lastMoveTime || now - enemy.lastMoveTime > ENEMY_MOVE_INTERVAL) {
+            const dirX = playerPosition.x - enemyPixelX;
+            const dirY = playerPosition.y - enemyPixelY;
+            const length = Math.sqrt(dirX * dirX + dirY * dirY);
+            
+            if (length > TILE_SIZE * 0.5) {
+              const normalizedX = dirX / length;
+              const normalizedY = dirY / length;
+              
+              const moveX = normalizedX * ENEMY_SPEED;
+              const moveY = normalizedY * ENEMY_SPEED;
+              
+              const newEnemyX = enemy.x + moveX / TILE_SIZE;
+              const newEnemyY = enemy.y + moveY / TILE_SIZE;
+              
+              const boundedEnemyX = Math.max(1.5, Math.min(MAP_WIDTH - 2.5, newEnemyX));
+              const boundedEnemyY = Math.max(1.5, Math.min(MAP_HEIGHT - 2.5, newEnemyY));
+              
+              const tileX = Math.floor(boundedEnemyX);
+              const tileY = Math.floor(boundedEnemyY);
+              const isWall = walls.some(w => w.x === tileX && w.y === tileY);
+              
+              if (!isWall) {
+                return {
+                  ...enemy,
+                  x: boundedEnemyX,
+                  y: boundedEnemyY,
+                  isChasing: true,
+                  lastMoveTime: now,
+                };
+              }
+            }
+            
+            return { ...enemy, isChasing: true, lastMoveTime: now };
+          }
+          
+          return enemy;
+        });
+      });
+
       animationRef.current = requestAnimationFrame(gameLoop);
     };
 
@@ -718,7 +779,7 @@ export function Planet() {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [playerPosition, showExitPrompt, showDoorPrompt, showLoreDialog, showAreaTransition]);
+  }, [playerPosition, showExitPrompt, showDoorPrompt, showLoreDialog, showAreaTransition, defeatedEnemyIds, walls]);
 
   const getPlanetColor = () => {
     return planetTheme?.groundColor || "#1a1a2e";
@@ -919,23 +980,26 @@ export function Planet() {
         {!isGamePaused && enemies.map((enemy) => {
           const isDefeated = defeatedEnemyIds.includes(enemy.id);
           const isBossEnemy = enemy.isBoss || enemy.isSecretBoss;
+          const isChasing = enemy.isChasing && !isBossEnemy;
           return !isDefeated ? (
             <div
               key={enemy.id}
-              className={`absolute flex items-center justify-center ${isBossEnemy ? 'animate-pulse' : ''}`}
+              className={`absolute flex items-center justify-center transition-all duration-75 ${isBossEnemy ? 'animate-pulse' : ''}`}
               style={{
                 left: enemy.x * TILE_SIZE - (isBossEnemy ? TILE_SIZE/2 : 0),
                 top: enemy.y * TILE_SIZE - (isBossEnemy ? TILE_SIZE/2 : 0),
                 width: isBossEnemy ? TILE_SIZE * 2 : TILE_SIZE,
                 height: isBossEnemy ? TILE_SIZE * 2 : TILE_SIZE,
                 backgroundColor: enemy.color || "#FF0000",
-                boxShadow: `0 0 ${isBossEnemy ? '16px' : '8px'} ${enemy.color || "#FF0000"}`,
-                border: isBossEnemy ? '3px solid #FFD700' : 'none',
+                boxShadow: isChasing 
+                  ? `0 0 16px #FF0000, 0 0 24px #FF0000` 
+                  : `0 0 ${isBossEnemy ? '16px' : '8px'} ${enemy.color || "#FF0000"}`,
+                border: isBossEnemy ? '3px solid #FFD700' : isChasing ? '2px solid #FFFF00' : 'none',
                 zIndex: isBossEnemy ? 10 : 1,
               }}
             >
               <span className={`text-white font-bold ${isBossEnemy ? 'text-lg' : 'text-xs'}`}>
-                {isBossEnemy ? '★' : '!'}
+                {isBossEnemy ? '★' : isChasing ? '!' : '?'}
               </span>
             </div>
           ) : null;
