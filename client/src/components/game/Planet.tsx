@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { useRPG, Enemy } from "../../lib/stores/useRPG";
 import { getPlanetById, PlanetTheme } from "../../lib/data/planets";
 import { generatePlanetAreas, PlanetArea, PlanetLore, LoreNode, getAreaBiomeConfig } from "../../lib/data/planetAreas";
+import { Sprite, getEnemySpriteType } from "./Sprite";
 
 interface Shard {
   id: number;
@@ -940,17 +941,16 @@ export function Planet() {
           !shard.collected ? (
             <div
               key={`shard-${shard.id}`}
-              className="absolute animate-pulse"
+              className="absolute animate-sprite-float"
               style={{
-                left: shard.x * TILE_SIZE + 8,
-                top: shard.y * TILE_SIZE + 8,
-                width: TILE_SIZE - 16,
-                height: TILE_SIZE - 16,
-                backgroundColor: "#AA00FF",
-                borderRadius: "50%",
-                boxShadow: "0 0 10px #AA00FF",
+                left: shard.x * TILE_SIZE,
+                top: shard.y * TILE_SIZE,
+                width: TILE_SIZE,
+                height: TILE_SIZE,
               }}
-            />
+            >
+              <Sprite type="shard" size={TILE_SIZE} glow glowColor="#AA00FF" />
+            </div>
           ) : null
         )}
 
@@ -960,16 +960,14 @@ export function Planet() {
               key={`key-${key.id}`}
               className="absolute animate-bounce"
               style={{
-                left: key.x * TILE_SIZE + 6,
-                top: key.y * TILE_SIZE + 4,
-                width: TILE_SIZE - 12,
-                height: TILE_SIZE - 8,
-                backgroundColor: "#FFD700",
-                borderRadius: "4px",
-                boxShadow: "0 0 12px #FFD700",
-                border: "2px solid #FFA500",
+                left: key.x * TILE_SIZE,
+                top: key.y * TILE_SIZE,
+                width: TILE_SIZE,
+                height: TILE_SIZE,
               }}
-            />
+            >
+              <Sprite type="key" size={TILE_SIZE} glow glowColor="#FFD700" />
+            </div>
           ) : null
         )}
 
@@ -978,17 +976,10 @@ export function Planet() {
           const isMainPath = door.routeType === "main";
           const isSecret = door.routeType === "secret";
           
-          const bgColor = isLocked ? "#663300" 
-            : door.type === "portal" ? "#7B68EE" 
-            : door.type === "gate" ? "#4169E1" 
-            : isMainPath ? "#228B22"
-            : isSecret ? "#8B008B"
-            : "#8B4513";
-          
-          const borderColor = isLocked ? "#FF0000"
+          const glowColor = isLocked ? "#FF0000"
             : isMainPath ? "#00FF00"
             : isSecret ? "#FF00FF"
-            : "#FFD700";
+            : "#7B68EE";
           
           return (
             <div
@@ -999,16 +990,23 @@ export function Planet() {
                 top: door.y * TILE_SIZE,
                 width: TILE_SIZE,
                 height: TILE_SIZE,
-                backgroundColor: bgColor,
-                border: `2px solid ${borderColor}`,
-                boxShadow: isMainPath ? "0 0 10px #00FF00" : door.type === "portal" ? "0 0 15px #7B68EE" : "none",
               }}
             >
-              <span className="text-white text-xl">
+              <Sprite 
+                type="door" 
+                size={TILE_SIZE}
+                glow={!isLocked}
+                glowColor={glowColor}
+                style={{ opacity: isLocked ? 0.5 : 1 }}
+              />
+              <span className="absolute text-white text-lg font-bold" style={{ textShadow: "0 0 4px black" }}>
                 {door.direction === "north" ? "↑" : door.direction === "south" ? "↓" : door.direction === "east" ? "→" : "←"}
               </span>
               {isMainPath && (
-                <span className="text-[8px] text-green-300 font-bold">MAIN</span>
+                <span className="absolute -bottom-1 text-[8px] text-green-300 font-bold">MAIN</span>
+              )}
+              {isLocked && (
+                <span className="absolute text-red-500 text-lg">🔒</span>
               )}
             </div>
           );
@@ -1039,6 +1037,7 @@ export function Planet() {
           const isDefeated = defeatedEnemyIds.includes(enemy.id);
           const isBossEnemy = enemy.isBoss || enemy.isSecretBoss;
           const isChasing = enemy.isChasing && !isBossEnemy;
+          const spriteSize = isBossEnemy ? TILE_SIZE * 2 : TILE_SIZE;
           return !isDefeated ? (
             <div
               key={enemy.id}
@@ -1046,19 +1045,20 @@ export function Planet() {
               style={{
                 left: enemy.x * TILE_SIZE - (isBossEnemy ? TILE_SIZE/2 : 0),
                 top: enemy.y * TILE_SIZE - (isBossEnemy ? TILE_SIZE/2 : 0),
-                width: isBossEnemy ? TILE_SIZE * 2 : TILE_SIZE,
-                height: isBossEnemy ? TILE_SIZE * 2 : TILE_SIZE,
-                backgroundColor: enemy.color || "#FF0000",
-                boxShadow: isChasing 
-                  ? `0 0 16px #FF0000, 0 0 24px #FF0000` 
-                  : `0 0 ${isBossEnemy ? '16px' : '8px'} ${enemy.color || "#FF0000"}`,
-                border: isBossEnemy ? '3px solid #FFD700' : isChasing ? '2px solid #FFFF00' : 'none',
+                width: spriteSize,
+                height: spriteSize,
                 zIndex: isBossEnemy ? 10 : 1,
               }}
             >
-              <span className={`text-white font-bold ${isBossEnemy ? 'text-lg' : 'text-xs'}`}>
-                {isBossEnemy ? '★' : isChasing ? '!' : '?'}
-              </span>
+              <Sprite 
+                type={isBossEnemy ? "boss" : getEnemySpriteType(enemy.name)} 
+                size={spriteSize}
+                glow={isChasing || isBossEnemy}
+                glowColor={isChasing ? "#FF0000" : isBossEnemy ? "#FFD700" : enemy.color || "#FF0000"}
+              />
+              {isChasing && (
+                <div className="absolute -top-2 left-1/2 -translate-x-1/2 text-yellow-400 font-bold text-lg animate-bounce">!</div>
+              )}
             </div>
           ) : null;
         })}
@@ -1107,13 +1107,13 @@ export function Planet() {
           style={{
             left: playerPosition.x,
             top: playerPosition.y,
-            width: TILE_SIZE - 4,
-            height: TILE_SIZE - 4,
-            backgroundColor: "#FF0000",
-            border: "2px solid #FF6666",
+            width: TILE_SIZE,
+            height: TILE_SIZE,
             transition: "left 0.05s, top 0.05s",
           }}
-        />
+        >
+          <Sprite type="player" size={TILE_SIZE} />
+        </div>
 
         {!isGamePaused && allEnemiesDefeated && !planetSealed && (
           <div

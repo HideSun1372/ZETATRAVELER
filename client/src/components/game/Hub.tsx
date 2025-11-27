@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import { useRPG } from "../../lib/stores/useRPG";
 import { GalaxyMap } from "./GalaxyMap";
+import { Sprite, getNPCSpriteType } from "./Sprite";
 
 interface NPC {
   id: string;
@@ -344,10 +345,15 @@ export function Hub() {
               top: npc.y * TILE_SIZE,
               width: TILE_SIZE,
               height: TILE_SIZE,
-              backgroundColor: npc.color,
             }}
           >
-            <span className="text-xs text-black font-bold">{npc.name[0]}</span>
+            <Sprite 
+              type={getNPCSpriteType(npc.id)} 
+              size={TILE_SIZE} 
+              animate={npc.id === "galaxy_portal"}
+              glow={npc.id === "healer" || npc.id === "galaxy_portal"}
+              glowColor={npc.id === "healer" ? "#00FF88" : "#9B59B6"}
+            />
           </div>
         ))}
         
@@ -356,13 +362,13 @@ export function Hub() {
           style={{
             left: playerPosition.x,
             top: playerPosition.y,
-            width: TILE_SIZE - 4,
-            height: TILE_SIZE - 4,
-            backgroundColor: "#FF0000",
-            border: "2px solid #FF6666",
+            width: TILE_SIZE,
+            height: TILE_SIZE,
             transition: "left 0.05s, top 0.05s",
           }}
-        />
+        >
+          <Sprite type="player" size={TILE_SIZE} />
+        </div>
         
         {showDialogue && currentNPC && (
           <div

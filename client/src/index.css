@@ -40,3 +40,30 @@ canvas {
 .animate-shake {
   animation: shake 0.15s ease-in-out;
 }
+
+@keyframes sprite-bob {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-2px); }
+}
+
+@keyframes sprite-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes sprite-glow-pulse {
+  0%, 100% { filter: brightness(1) drop-shadow(0 0 4px currentColor); }
+  50% { filter: brightness(1.2) drop-shadow(0 0 8px currentColor); }
+}
+
+.animate-sprite-bob {
+  animation: sprite-bob 0.5s ease-in-out infinite alternate;
+}
+
+.animate-sprite-float {
+  animation: sprite-float 2s ease-in-out infinite;
+}
+
+.animate-sprite-glow {
+  animation: sprite-glow-pulse 1.5s ease-in-out infinite;
+}
