@@ -33,7 +33,9 @@ export function VesselCreator({ onComplete }: VesselCreatorProps) {
   const [whiteOverlay, setWhiteOverlay] = useState(0);
   const [twistTriggered, setTwistTriggered] = useState(false);
   const [pauseBeforeTyping, setPauseBeforeTyping] = useState(false);
+  const [droneStarted, setDroneStarted] = useState(false);
   const musicRef = useRef<Howl | null>(null);
+  const droneRef = useRef<Howl | null>(null);
   
   const [body, setBody] = useState("");
   const [head, setHead] = useState("");
@@ -77,6 +79,19 @@ export function VesselCreator({ onComplete }: VesselCreatorProps) {
     : currentStep.text;
 
   useEffect(() => {
+    if (stepIndex === 0 && !droneStarted) {
+      setDroneStarted(true);
+      droneRef.current = new Howl({
+        src: ["/sounds/drone.mp3"],
+        loop: true,
+        volume: 0,
+      });
+      droneRef.current.play();
+      droneRef.current.fade(0, 0.5, 1500);
+    }
+  }, [stepIndex, droneStarted]);
+
+  useEffect(() => {
     setDisplayedText("");
     setCanProceed(false);
     setSelectedIndex(0);
@@ -96,6 +111,13 @@ export function VesselCreator({ onComplete }: VesselCreatorProps) {
   useEffect(() => {
     if (stepIndex === 3 && !showBackground) {
       setShowBackground(true);
+      
+      if (droneRef.current) {
+        droneRef.current.fade(droneRef.current.volume(), 0, 2000);
+        setTimeout(() => {
+          droneRef.current?.stop();
+        }, 2000);
+      }
       
       if (!musicRef.current) {
         musicRef.current = new Howl({
@@ -156,6 +178,10 @@ export function VesselCreator({ onComplete }: VesselCreatorProps) {
       if (musicRef.current) {
         musicRef.current.stop();
         musicRef.current.unload();
+      }
+      if (droneRef.current) {
+        droneRef.current.stop();
+        droneRef.current.unload();
       }
     };
   }, []);
