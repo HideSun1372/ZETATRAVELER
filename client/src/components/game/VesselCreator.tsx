@@ -100,7 +100,7 @@ export function VesselCreator({ onComplete }: VesselCreatorProps) {
     setCanProceed(false);
     setSelectedIndex(0);
     
-    if (stepIndex === 21) {
+    if (stepIndex === 20) {
       setPauseBeforeTyping(true);
       setIsTyping(false);
       setTimeout(() => {
