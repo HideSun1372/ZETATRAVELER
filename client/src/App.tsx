@@ -9,7 +9,7 @@ import { Battle } from "./components/game/Battle";
 import { GameOver } from "./components/game/GameOver";
 import "@fontsource/inter";
 
-const SKIP_VESSEL_CREATION = true; // Temporarily skip vessel creation
+const SKIP_VESSEL_CREATION = false;
 
 function App() {
   const gamePhase = useRPG((state) => state.gamePhase);
