@@ -215,21 +215,21 @@ export function VesselCreator({ onComplete }: VesselCreatorProps) {
       const options = currentStep.options;
       const selected = options[selectedIndex];
       
-      if (currentStep.text.includes("FORM")) {
+      if (currentStep.text.includes("BODY")) {
         setBody(selected);
-      } else if (currentStep.text.includes("NATURE")) {
+      } else if (currentStep.text.includes("SPIRIT")) {
         setHead(selected);
-      } else if (currentStep.text.includes("FOOD")) {
+      } else if (currentStep.text.includes("TASTE")) {
         setFood(selected);
-      } else if (currentStep.text.includes("BLOOD")) {
+      } else if (currentStep.text.includes("VEINS")) {
         setBlood(selected);
-      } else if (currentStep.text.includes("COLOR")) {
+      } else if (currentStep.text.includes("HUE")) {
         setColor(selected);
-      } else if (currentStep.text.includes("GIFT")) {
+      } else if (currentStep.text.includes("TOKEN")) {
         setGift(selected);
-      } else if (currentStep.text.includes("FEEL")) {
+      } else if (currentStep.text.includes("THINK")) {
         setFeeling(selected);
-      } else if (currentStep.text.includes("HONESTLY")) {
+      } else if (currentStep.text.includes("TRUE")) {
         if (selected === "NO") {
           setStepIndex(4);
           setBody("");
