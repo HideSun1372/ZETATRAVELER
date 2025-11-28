@@ -18,6 +18,7 @@ export function MainMenu() {
     saveSlots: rpgSaveSlots, 
     loadGame,
     playerName,
+    setVesselName,
   } = useRPG();
   
   const [menuState, setMenuState] = useState<"main" | "new" | "continue" | "settings">("main");
@@ -52,7 +53,9 @@ export function MainMenu() {
   }, [menuState]);
 
   const handleNewGame = () => {
-    setGamePhase("vessel");
+    // Skip vessel creation temporarily - go straight to intro
+    setVesselName("Aiden");
+    setGamePhase("intro");
   };
 
   const handleContinue = (slot: number) => {

@@ -215,7 +215,7 @@ const calculateXPToNextLevel = (level: number): number => {
 };
 
 export const useRPG = create<RPGState>((set, get) => ({
-  gamePhase: "vessel",
+  gamePhase: "menu",
   playerName: "",
   vesselName: "",
   

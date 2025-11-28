@@ -22,6 +22,8 @@ export function IntroCutscene({ playerName, onComplete }: IntroCutsceneProps) {
   const [blackOverlay, setBlackOverlay] = useState(0);
   const [showScene, setShowScene] = useState(false);
   const musicRef = useRef<Howl | null>(null);
+  const cHeldRef = useRef(false);
+  const cIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const steps: CutsceneStep[] = useMemo(() => [
     { type: "fade_from_white" },
@@ -122,8 +124,17 @@ export function IntroCutscene({ playerName, onComplete }: IntroCutsceneProps) {
     if (isTyping) {
       setDisplayedText(currentStep.text);
       setIsTyping(false);
-      setTimeout(() => setCanProceed(true), 100);
+      setTimeout(() => setCanProceed(true), 50);
     }
+  };
+
+  const advanceDialogue = () => {
+    setStepIndex(prev => {
+      if (prev < steps.length - 1) {
+        return prev + 1;
+      }
+      return prev;
+    });
   };
 
   useEffect(() => {
@@ -134,13 +145,26 @@ export function IntroCutscene({ playerName, onComplete }: IntroCutsceneProps) {
         return;
       }
 
-      // C key: Mash through dialogue (skip + advance)
-      if (e.key === "c" || e.key === "C") {
+      // C key: Start holding to mash through dialogue
+      if ((e.key === "c" || e.key === "C") && !cHeldRef.current) {
+        cHeldRef.current = true;
+        
+        // Immediate action
         if (isTyping) {
           skipTyping();
         } else if (canProceed && stepIndex < steps.length - 1) {
-          setStepIndex(stepIndex + 1);
+          advanceDialogue();
         }
+        
+        // Set up interval for continuous skipping while held
+        cIntervalRef.current = setInterval(() => {
+          setStepIndex(prev => {
+            if (prev < steps.length - 1) {
+              return prev + 1;
+            }
+            return prev;
+          });
+        }, 150);
         return;
       }
 
@@ -152,8 +176,25 @@ export function IntroCutscene({ playerName, onComplete }: IntroCutsceneProps) {
       }
     };
 
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === "c" || e.key === "C") {
+        cHeldRef.current = false;
+        if (cIntervalRef.current) {
+          clearInterval(cIntervalRef.current);
+          cIntervalRef.current = null;
+        }
+      }
+    };
+
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+      if (cIntervalRef.current) {
+        clearInterval(cIntervalRef.current);
+      }
+    };
   }, [canProceed, stepIndex, steps.length, isTyping, currentStep]);
 
   const renderDialogue = () => {
