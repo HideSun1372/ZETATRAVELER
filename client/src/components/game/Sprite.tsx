@@ -1,4 +1,5 @@
 import { CSSProperties, useMemo, useState, useEffect, useRef, useCallback } from "react";
+import { getEnemySpritePath } from "@/lib/data/enemySprites";
 
 export type SpriteType = 
   | "player"
@@ -468,13 +469,17 @@ export function EnemySprite({
   className?: string;
   style?: CSSProperties;
 }) {
+  const uniqueSpritePath = useMemo(() => getEnemySpritePath(enemyName), [enemyName]);
+  const processedUniqueSprite = useProcessedSprite(uniqueSpritePath || "");
+  const { scale, offsetY, rotation } = useSpriteAnimator(isChasing ? "attack" : animation);
+
   const appearance = useMemo(() => 
     generateEnemyAppearance(enemyName, enemyType, planetId, enemyIndex, region), 
     [enemyName, enemyType, planetId, enemyIndex, region]
   );
 
   const effectiveAnimation = isChasing ? "attack" : animation;
-  const effectiveSize = size * appearance.scaleModifier;
+  const effectiveSize = size;
 
   if (isBoss) {
     return (
@@ -497,6 +502,55 @@ export function EnemySprite({
           brightness={110}
           className={className}
           style={style}
+        />
+      </div>
+    );
+  }
+
+  const transform = useMemo(() => {
+    const transforms: string[] = [];
+    if (scale !== 1) transforms.push(`scale(${scale})`);
+    if (rotation !== 0) transforms.push(`rotate(${rotation}deg)`);
+    return transforms.length > 0 ? transforms.join(" ") : undefined;
+  }, [scale, rotation]);
+
+  const glowFilter = useMemo(() => {
+    if (isChasing) {
+      return `drop-shadow(0 0 8px #ff0000) drop-shadow(0 0 16px #ff0000)`;
+    }
+    if (appearance.hasGlow) {
+      return `drop-shadow(0 0 6px ${appearance.glowColor}) drop-shadow(0 0 12px ${appearance.glowColor})`;
+    }
+    return undefined;
+  }, [isChasing, appearance.hasGlow, appearance.glowColor]);
+
+  if (uniqueSpritePath && processedUniqueSprite) {
+    return (
+      <div className={`relative ${className}`} style={{ width: effectiveSize, height: effectiveSize, ...style }}>
+        {(appearance.hasGlow || isChasing) && (
+          <div 
+            className="absolute inset-0 rounded-full"
+            style={{
+              background: `radial-gradient(circle, ${isChasing ? 'rgba(255,0,0,0.4)' : appearance.auraColor} 0%, transparent 60%)`,
+              transform: "scale(1.4)",
+              animation: "pulse 2s ease-in-out infinite",
+            }}
+          />
+        )}
+        <img 
+          src={processedUniqueSprite}
+          alt={enemyName}
+          style={{
+            width: effectiveSize,
+            height: effectiveSize,
+            objectFit: "contain",
+            imageRendering: "pixelated",
+            filter: glowFilter,
+            transform,
+            marginTop: -offsetY,
+            transition: "margin-top 0.05s ease-out",
+          }}
+          draggable={false}
         />
       </div>
     );
