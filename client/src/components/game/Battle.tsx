@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useRPG } from "../../lib/stores/useRPG";
 import { getEnemyDialogue, getBossDialogue, TalkOption } from "../../lib/data/enemyDialogue";
 import { EnemySprite, getEnemySpriteType } from "./Sprite";
+import { getPlanetById } from "../../lib/data/planets";
 
 interface Bullet {
   id: number;
@@ -802,8 +803,10 @@ export function Battle() {
             <div className={`${currentEnemy.canSpare ? 'animate-sprite-shimmer' : ''}`}>
               <EnemySprite 
                 enemyName={currentEnemy.name}
+                enemyType={currentEnemy.name}
                 planetId={currentEnemy.planetId || 1}
                 enemyIndex={currentEnemy.id ? parseInt(currentEnemy.id.replace(/\D/g, '')) || 0 : 0}
+                region={getPlanetById(currentEnemy.planetId || 1)?.region || "Verdant Cluster"}
                 size={isBoss ? 140 : 110}
                 isBoss={isBoss ?? false}
                 animation={currentEnemy.canSpare ? "shimmer" : "menace"}

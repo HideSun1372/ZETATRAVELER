@@ -4,6 +4,7 @@ import { getPlanetById, PlanetTheme } from "../../lib/data/planets";
 import { generatePlanetAreas, PlanetArea, PlanetLore, LoreNode, getAreaBiomeConfig } from "../../lib/data/planetAreas";
 import { Sprite, EnemySprite, ItemSprite, PlayerSprite, getEnemySpriteType } from "./Sprite";
 import { PauseMenu } from "./PauseMenu";
+import { getFloorPatternStyle, getWallStyleGradient } from "../../lib/data/biomes";
 
 interface Shard {
   id: number;
@@ -186,19 +187,33 @@ export function Planet() {
 
   const decorations = useMemo(() => {
     if (!areaBiome) return [];
-    const decs: { x: number; y: number; type: string }[] = [];
+    const decs: { x: number; y: number; type: string; emoji: string; animated: boolean; glows: boolean }[] = [];
     const seed = currentPlanetId * 500 + parseInt(currentAreaId.split('-').pop() || '0');
     const random = (n: number) => {
       const x = Math.sin(seed + n) * 10000;
       return x - Math.floor(x);
     };
 
-    const numDecorations = 4 + Math.floor(random(0) * 4);
-    for (let i = 0; i < numDecorations; i++) {
+    const biomeDecorations = areaBiome.decorations || [];
+    if (biomeDecorations.length === 0) return decs;
+
+    for (let i = 0; i < 12; i++) {
       const x = 2 + Math.floor(random(i * 2) * (MAP_WIDTH - 4));
       const y = 2 + Math.floor(random(i * 2 + 1) * (MAP_HEIGHT - 4));
-      const types = ["rock", "plant", "crystal", "pillar"];
-      decs.push({ x, y, type: types[Math.floor(random(i * 3) * types.length)] });
+      
+      for (const decConfig of biomeDecorations) {
+        if (random(i * 10 + biomeDecorations.indexOf(decConfig)) < decConfig.probability) {
+          decs.push({ 
+            x, 
+            y, 
+            type: decConfig.type, 
+            emoji: decConfig.emoji,
+            animated: decConfig.animated || false,
+            glows: decConfig.glows || false,
+          });
+          break;
+        }
+      }
     }
     return decs;
   }, [currentPlanetId, currentAreaId, areaBiome]);
@@ -974,9 +989,22 @@ export function Planet() {
           boxShadow: `inset 0 0 60px ${areaBiome?.ambientLight || "rgba(0,0,0,0.3)"}`,
         }}
       >
+        {areaBiome?.fogOpacity && areaBiome.fogOpacity > 0 && (
+          <div 
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background: `radial-gradient(ellipse at center, transparent 30%, ${areaBiome.fogColor}${Math.floor(areaBiome.fogOpacity * 255).toString(16).padStart(2, '0')} 100%)`,
+              zIndex: 100,
+            }}
+          />
+        )}
         {floorPattern.map((tile) => {
-          const baseColor = areaBiome?.groundColor || getPlanetColor();
-          const brightness = 0.85 + (tile.variant * 0.05);
+          const baseColor = tile.variant % 2 === 0 
+            ? (areaBiome?.groundColor || getPlanetColor())
+            : (areaBiome?.groundColorAlt || areaBiome?.groundColor || getPlanetColor());
+          const patternStyle = areaBiome?.floorPattern 
+            ? getFloorPatternStyle(areaBiome.floorPattern, tile.x, tile.y, currentPlanetId)
+            : {};
           return (
             <div
               key={`floor-${tile.x}-${tile.y}`}
@@ -987,95 +1015,59 @@ export function Planet() {
                 width: TILE_SIZE,
                 height: TILE_SIZE,
                 backgroundColor: baseColor,
-                filter: `brightness(${brightness})`,
-                borderRight: tile.variant % 2 === 0 ? `1px solid ${areaBiome?.accentColor || "#333"}22` : "none",
-                borderBottom: tile.variant % 2 === 1 ? `1px solid ${areaBiome?.accentColor || "#333"}22` : "none",
+                ...patternStyle,
               }}
             />
           );
         })}
 
-        {walls.map((wall, i) => (
-          <div
-            key={`wall-${i}`}
-            className="absolute"
-            style={{
-              left: wall.x * TILE_SIZE,
-              top: wall.y * TILE_SIZE,
-              width: TILE_SIZE,
-              height: TILE_SIZE,
-              background: wall.isCorner 
-                ? `linear-gradient(135deg, ${getWallColor()} 0%, ${planetTheme?.primaryColor || "#555"} 100%)`
-                : wall.y === 0 
-                  ? `linear-gradient(to bottom, ${planetTheme?.primaryColor || "#666"} 0%, ${getWallColor()} 100%)`
-                  : wall.y === MAP_HEIGHT - 1
-                    ? `linear-gradient(to top, ${getWallColor()} 0%, ${planetTheme?.primaryColor || "#555"} 100%)`
-                    : `linear-gradient(to right, ${getWallColor()} 0%, ${planetTheme?.primaryColor || "#555"} 50%, ${getWallColor()} 100%)`,
-              borderTop: wall.y === 0 ? `2px solid ${planetTheme?.primaryColor || "#888"}` : "none",
-              borderBottom: wall.y === MAP_HEIGHT - 1 ? `2px solid ${getWallColor()}` : "none",
-              borderLeft: wall.x === 0 ? `2px solid ${planetTheme?.primaryColor || "#888"}` : "none",
-              borderRight: wall.x === MAP_WIDTH - 1 ? `2px solid ${getWallColor()}` : "none",
-            }}
-          />
-        ))}
+        {walls.map((wall, i) => {
+          const wallPosition = wall.isCorner ? "corner" 
+            : wall.y === 0 ? "top" 
+            : wall.y === MAP_HEIGHT - 1 ? "bottom" 
+            : wall.x === 0 ? "left" : "right";
+          const wallStyle = areaBiome?.wallStyle || "rough";
+          const wallColor = areaBiome?.wallColor || getWallColor();
+          const wallColorAlt = areaBiome?.wallColorAlt || wallColor;
+          const accentColor = areaBiome?.accentColor || planetTheme?.primaryColor || "#555";
+          
+          return (
+            <div
+              key={`wall-${i}`}
+              className="absolute"
+              style={{
+                left: wall.x * TILE_SIZE,
+                top: wall.y * TILE_SIZE,
+                width: TILE_SIZE,
+                height: TILE_SIZE,
+                background: getWallStyleGradient(wallStyle, wallColor, wallColorAlt, accentColor, wallPosition),
+                borderTop: wall.y === 0 ? `2px solid ${accentColor}` : "none",
+                borderBottom: wall.y === MAP_HEIGHT - 1 ? `2px solid ${wallColor}` : "none",
+                borderLeft: wall.x === 0 ? `2px solid ${accentColor}` : "none",
+                borderRight: wall.x === MAP_WIDTH - 1 ? `2px solid ${wallColor}` : "none",
+              }}
+            />
+          );
+        })}
 
         {decorations.map((dec, i) => (
           <div
             key={`dec-${i}`}
-            className="absolute flex items-center justify-center pointer-events-none"
+            className={`absolute flex items-center justify-center pointer-events-none ${dec.animated ? 'animate-sprite-idle' : ''}`}
             style={{
               left: dec.x * TILE_SIZE,
               top: dec.y * TILE_SIZE,
               width: TILE_SIZE,
               height: TILE_SIZE,
-              opacity: 0.6,
+              opacity: 0.8,
               zIndex: 1,
+              fontSize: TILE_SIZE * 0.6,
+              filter: dec.glows ? `drop-shadow(0 0 6px ${areaBiome?.accentColor || "#fff"})` : undefined,
             }}
           >
-            {dec.type === "rock" && (
-              <div 
-                className="rounded-full"
-                style={{ 
-                  width: TILE_SIZE * 0.5, 
-                  height: TILE_SIZE * 0.4,
-                  backgroundColor: getWallColor(),
-                  boxShadow: `0 2px 4px rgba(0,0,0,0.3)`,
-                }}
-              />
-            )}
-            {dec.type === "plant" && (
-              <div 
-                className="animate-sprite-idle"
-                style={{ 
-                  fontSize: TILE_SIZE * 0.5,
-                  color: areaBiome?.accentColor || "#228B22",
-                }}
-              >
-                🌿
-              </div>
-            )}
-            {dec.type === "crystal" && (
-              <div 
-                className="animate-pulse"
-                style={{ 
-                  width: TILE_SIZE * 0.3, 
-                  height: TILE_SIZE * 0.5,
-                  backgroundColor: planetTheme?.primaryColor || "#9b59b6",
-                  clipPath: "polygon(50% 0%, 100% 100%, 0% 100%)",
-                  boxShadow: `0 0 8px ${planetTheme?.primaryColor || "#9b59b6"}`,
-                }}
-              />
-            )}
-            {dec.type === "pillar" && (
-              <div 
-                style={{ 
-                  width: TILE_SIZE * 0.3, 
-                  height: TILE_SIZE * 0.8,
-                  backgroundColor: getWallColor(),
-                  borderRadius: "4px 4px 0 0",
-                }}
-              />
-            )}
+            <span className={dec.glows ? 'animate-pulse' : ''}>
+              {dec.emoji}
+            </span>
           </div>
         ))}
 
@@ -1194,10 +1186,13 @@ export function Planet() {
             >
               <EnemySprite 
                 enemyName={enemy.name}
+                enemyType={enemy.name}
                 planetId={currentPlanetId}
                 enemyIndex={enemyIndex}
+                region={planetTheme?.region || "Verdant Cluster"}
                 size={enemySpriteSize}
                 isBoss={isBossEnemy}
+                isChasing={isChasing}
                 animation={isChasing ? "attack" : isBossEnemy ? "menace" : "idle"}
               />
               {isChasing && (
