@@ -24,8 +24,9 @@ function App() {
     }
   }, [gamePhase]);
 
-  const handleVesselComplete = (name: string) => {
-    setVesselName(name);
+  const handleVesselComplete = (_name: string) => {
+    // The vessel creation is a fake-out - the player's real name is always Aiden
+    setVesselName("Aiden");
     setGamePhase("intro");
   };
 

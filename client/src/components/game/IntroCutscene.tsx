@@ -25,9 +25,9 @@ export function IntroCutscene({ playerName, onComplete }: IntroCutsceneProps) {
 
   const steps: CutsceneStep[] = useMemo(() => [
     { type: "fade_from_white" },
-    { type: "dialogue", text: `${playerName}!`, speaker: "???" },
+    { type: "dialogue", text: "Aiden!", speaker: "???" },
     { type: "pause", duration: 500 },
-    { type: "dialogue", text: `${playerName}, wake up!`, speaker: "???" },
+    { type: "dialogue", text: "Aiden, wake up!", speaker: "???" },
     { type: "dialogue", text: "Finally. I thought you'd sleep through the whole briefing.", speaker: "COMMANDER" },
     { type: "dialogue", text: "Listen closely. The galaxy is fracturing.", speaker: "COMMANDER" },
     { type: "dialogue", text: "50 planets. 75 Nebuli shards. You're our last hope.", speaker: "COMMANDER" },
@@ -35,7 +35,7 @@ export function IntroCutscene({ playerName, onComplete }: IntroCutsceneProps) {
     { type: "pause", duration: 800 },
     { type: "dialogue", text: "The ship is ready. Your journey begins now, Zetatraveler.", speaker: "COMMANDER" },
     { type: "fade_to_black" },
-  ], [playerName]);
+  ], []);
 
   const currentStep = steps[stepIndex];
 
