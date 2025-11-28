@@ -255,8 +255,35 @@ export function VesselCreator({ onComplete }: VesselCreatorProps) {
     }
   };
 
+  const skipTyping = () => {
+    if (isTyping) {
+      setDisplayedText(currentText);
+      setIsTyping(false);
+      setTimeout(() => setCanProceed(true), 100);
+    }
+  };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // X key: Skip typing animation and show full text
+      if (e.key === "x" || e.key === "X") {
+        if (isTyping && currentStep.type !== "input") {
+          skipTyping();
+        }
+        return;
+      }
+
+      // C key: Mash through dialogue (skip + advance)
+      if (e.key === "c" || e.key === "C") {
+        if (currentStep.type === "input") return;
+        if (isTyping) {
+          skipTyping();
+        } else if (canProceed) {
+          handleProceed();
+        }
+        return;
+      }
+
       if (currentStep.type === "input" && canProceed) {
         if (e.key === "Backspace") {
           setName((prev) => prev.slice(0, -1));
@@ -286,7 +313,7 @@ export function VesselCreator({ onComplete }: VesselCreatorProps) {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [currentStep, canProceed, name, selectedIndex, stepIndex]);
+  }, [currentStep, canProceed, name, selectedIndex, stepIndex, isTyping, currentText]);
 
   const getOptions = () => {
     if (currentStep.type === "choice") return currentStep.options;

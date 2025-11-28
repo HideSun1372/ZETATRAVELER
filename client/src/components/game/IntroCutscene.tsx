@@ -116,8 +116,34 @@ export function IntroCutscene({ playerName, onComplete }: IntroCutsceneProps) {
     }
   }, [displayedText, currentStep, isTyping]);
 
+  const skipTyping = () => {
+    if (!currentStep) return;
+    if (currentStep.type !== "dialogue" && currentStep.type !== "narration") return;
+    if (isTyping) {
+      setDisplayedText(currentStep.text);
+      setIsTyping(false);
+      setTimeout(() => setCanProceed(true), 100);
+    }
+  };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // X key: Skip typing animation and show full text
+      if (e.key === "x" || e.key === "X") {
+        skipTyping();
+        return;
+      }
+
+      // C key: Mash through dialogue (skip + advance)
+      if (e.key === "c" || e.key === "C") {
+        if (isTyping) {
+          skipTyping();
+        } else if (canProceed && stepIndex < steps.length - 1) {
+          setStepIndex(stepIndex + 1);
+        }
+        return;
+      }
+
       if (!canProceed) return;
       if (e.key === "Enter" || e.key === "z" || e.key === "Z" || e.key === " ") {
         if (stepIndex < steps.length - 1) {
@@ -128,7 +154,7 @@ export function IntroCutscene({ playerName, onComplete }: IntroCutsceneProps) {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [canProceed, stepIndex, steps.length]);
+  }, [canProceed, stepIndex, steps.length, isTyping, currentStep]);
 
   const renderDialogue = () => {
     if (!currentStep) return null;
