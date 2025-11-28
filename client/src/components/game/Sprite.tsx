@@ -1,4 +1,4 @@
-import { CSSProperties, useMemo } from "react";
+import { CSSProperties, useMemo, useState, useEffect, useRef, useCallback } from "react";
 
 export type SpriteType = 
   | "player"
@@ -47,20 +47,203 @@ const SPRITE_PATHS: Record<SpriteType, string> = {
   portal: "/sprites/galaxy_portal_sprite.png",
 };
 
-const ANIMATION_CLASSES: Record<AnimationType, string> = {
-  none: "",
-  idle: "animate-sprite-idle",
-  walk: "animate-sprite-walk",
-  float: "animate-sprite-float",
-  bob: "animate-sprite-bob",
-  attack: "animate-sprite-attack",
-  hurt: "animate-sprite-hurt",
-  spawn: "animate-sprite-spawn",
-  shimmer: "animate-sprite-shimmer",
-  portal: "animate-portal-swirl",
-  menace: "animate-enemy-menace",
-  sparkle: "animate-item-sparkle",
+const processedSpriteCache = new Map<string, string>();
+
+function removeWhiteBackground(imageSrc: string): Promise<string> {
+  const cached = processedSpriteCache.get(imageSrc);
+  if (cached) return Promise.resolve(cached);
+
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        resolve(imageSrc);
+        return;
+      }
+
+      ctx.drawImage(img, 0, 0);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        
+        if (r > 240 && g > 240 && b > 240) {
+          data[i + 3] = 0;
+        } else if (r > 220 && g > 220 && b > 220) {
+          data[i + 3] = Math.floor(data[i + 3] * 0.3);
+        } else if (r > 200 && g > 200 && b > 200) {
+          data[i + 3] = Math.floor(data[i + 3] * 0.6);
+        }
+      }
+
+      ctx.putImageData(imageData, 0, 0);
+      const processedUrl = canvas.toDataURL("image/png");
+      processedSpriteCache.set(imageSrc, processedUrl);
+      resolve(processedUrl);
+    };
+    img.onerror = () => resolve(imageSrc);
+    img.src = imageSrc;
+  });
+}
+
+function useProcessedSprite(spritePath: string): string {
+  const [processedUrl, setProcessedUrl] = useState<string>(spritePath);
+
+  useEffect(() => {
+    let mounted = true;
+    removeWhiteBackground(spritePath).then(url => {
+      if (mounted) setProcessedUrl(url);
+    });
+    return () => { mounted = false; };
+  }, [spritePath]);
+
+  return processedUrl;
+}
+
+interface SpriteAnimationConfig {
+  frameCount: number;
+  fps: number;
+  loop: boolean;
+  yoyo: boolean;
+}
+
+const SPRITE_ANIMATIONS: Record<AnimationType, SpriteAnimationConfig> = {
+  none: { frameCount: 1, fps: 0, loop: false, yoyo: false },
+  idle: { frameCount: 4, fps: 3, loop: true, yoyo: true },
+  walk: { frameCount: 6, fps: 10, loop: true, yoyo: false },
+  float: { frameCount: 4, fps: 4, loop: true, yoyo: true },
+  bob: { frameCount: 3, fps: 3, loop: true, yoyo: true },
+  attack: { frameCount: 4, fps: 12, loop: false, yoyo: false },
+  hurt: { frameCount: 2, fps: 8, loop: false, yoyo: false },
+  spawn: { frameCount: 5, fps: 8, loop: false, yoyo: false },
+  shimmer: { frameCount: 3, fps: 5, loop: true, yoyo: true },
+  portal: { frameCount: 8, fps: 6, loop: true, yoyo: false },
+  menace: { frameCount: 4, fps: 4, loop: true, yoyo: true },
+  sparkle: { frameCount: 4, fps: 6, loop: true, yoyo: true },
 };
+
+function useSpriteAnimator(animation: AnimationType): { frame: number; scale: number; offsetY: number; rotation: number } {
+  const [frame, setFrame] = useState(0);
+  const [direction, setDirection] = useState(1);
+  const frameRef = useRef(0);
+  const directionRef = useRef(1);
+  const lastTimeRef = useRef(0);
+  const config = SPRITE_ANIMATIONS[animation];
+
+  useEffect(() => {
+    if (config.fps === 0) return;
+
+    const interval = 1000 / config.fps;
+    let animationId: number;
+
+    const animate = (currentTime: number) => {
+      if (currentTime - lastTimeRef.current >= interval) {
+        lastTimeRef.current = currentTime;
+        
+        if (config.yoyo) {
+          const nextFrame = frameRef.current + directionRef.current;
+          if (nextFrame >= config.frameCount - 1) {
+            directionRef.current = -1;
+            frameRef.current = config.frameCount - 1;
+          } else if (nextFrame <= 0) {
+            directionRef.current = 1;
+            frameRef.current = 0;
+          } else {
+            frameRef.current = nextFrame;
+          }
+        } else {
+          frameRef.current = (frameRef.current + 1) % config.frameCount;
+        }
+        
+        setFrame(frameRef.current);
+        setDirection(directionRef.current);
+      }
+      animationId = requestAnimationFrame(animate);
+    };
+
+    animationId = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animationId);
+  }, [animation, config.fps, config.frameCount, config.yoyo]);
+
+  const animationEffects = useMemo(() => {
+    const normalizedFrame = frame / Math.max(1, config.frameCount - 1);
+    
+    switch (animation) {
+      case "idle":
+        return {
+          scale: 1 + Math.sin(normalizedFrame * Math.PI) * 0.03,
+          offsetY: Math.sin(normalizedFrame * Math.PI) * 2,
+          rotation: 0,
+        };
+      case "walk":
+        return {
+          scale: 1,
+          offsetY: Math.abs(Math.sin(frame * Math.PI / 3)) * 4,
+          rotation: Math.sin(frame * Math.PI / 3) * 3,
+        };
+      case "float":
+        return {
+          scale: 1 + Math.sin(normalizedFrame * Math.PI) * 0.05,
+          offsetY: Math.sin(normalizedFrame * Math.PI) * 6,
+          rotation: Math.sin(normalizedFrame * Math.PI * 2) * 2,
+        };
+      case "bob":
+        return {
+          scale: 1,
+          offsetY: Math.sin(normalizedFrame * Math.PI) * 3,
+          rotation: 0,
+        };
+      case "menace":
+        return {
+          scale: 1 + Math.sin(normalizedFrame * Math.PI * 2) * 0.08,
+          offsetY: Math.sin(normalizedFrame * Math.PI) * 2,
+          rotation: Math.sin(normalizedFrame * Math.PI * 2) * 5,
+        };
+      case "sparkle":
+        return {
+          scale: 1 + Math.sin(normalizedFrame * Math.PI * 2) * 0.1,
+          offsetY: Math.sin(normalizedFrame * Math.PI) * 3,
+          rotation: frame * 5,
+        };
+      case "portal":
+        return {
+          scale: 1 + Math.sin(normalizedFrame * Math.PI) * 0.1,
+          offsetY: 0,
+          rotation: frame * 8,
+        };
+      case "attack":
+        return {
+          scale: 1 + (frame === 2 ? 0.2 : 0),
+          offsetY: frame === 2 ? -5 : 0,
+          rotation: frame === 2 ? 10 : 0,
+        };
+      case "hurt":
+        return {
+          scale: 0.9,
+          offsetY: 0,
+          rotation: frame % 2 === 0 ? -10 : 10,
+        };
+      case "shimmer":
+        return {
+          scale: 1,
+          offsetY: 0,
+          rotation: 0,
+        };
+      default:
+        return { scale: 1, offsetY: 0, rotation: 0 };
+    }
+  }, [animation, frame, config.frameCount]);
+
+  return { frame, ...animationEffects };
+}
 
 interface SpriteProps {
   type: SpriteType;
@@ -89,6 +272,10 @@ export function Sprite({
   brightness = 100,
   flipX = false,
 }: SpriteProps) {
+  const spritePath = SPRITE_PATHS[type];
+  const processedSprite = useProcessedSprite(spritePath);
+  const { scale, offsetY, rotation } = useSpriteAnimator(animation);
+
   const filters = useMemo(() => {
     const filterParts: string[] = [];
     
@@ -109,11 +296,17 @@ export function Sprite({
     return filterParts.length > 0 ? filterParts.join(" ") : undefined;
   }, [hueRotate, saturation, brightness, glow, glowColor, size]);
 
-  const animationClass = ANIMATION_CLASSES[animation] || "";
+  const transform = useMemo(() => {
+    const transforms: string[] = [];
+    if (flipX) transforms.push("scaleX(-1)");
+    if (scale !== 1) transforms.push(`scale(${scale})`);
+    if (rotation !== 0) transforms.push(`rotate(${rotation}deg)`);
+    return transforms.length > 0 ? transforms.join(" ") : undefined;
+  }, [flipX, scale, rotation]);
 
   return (
     <div 
-      className={`${className} ${animationClass}`.trim()}
+      className={className}
       style={{
         width: size,
         height: size,
@@ -124,7 +317,7 @@ export function Sprite({
       }}
     >
       <img 
-        src={SPRITE_PATHS[type]}
+        src={processedSprite}
         alt={type}
         style={{
           width: size,
@@ -132,7 +325,9 @@ export function Sprite({
           objectFit: "contain",
           imageRendering: "pixelated",
           filter: filters,
-          transform: flipX ? "scaleX(-1)" : undefined,
+          transform,
+          marginTop: -offsetY,
+          transition: "margin-top 0.05s ease-out",
         }}
         draggable={false}
       />
@@ -140,47 +335,99 @@ export function Sprite({
   );
 }
 
-export interface EnemyVariant {
+export interface EnemyAppearance {
   baseType: SpriteType;
   hueRotate: number;
   saturation: number;
   brightness: number;
   glowColor: string;
   hasGlow: boolean;
+  bodyShape: "round" | "angular" | "spiky" | "amorphous" | "tall" | "wide";
+  eyeStyle: "single" | "multiple" | "slits" | "glowing" | "compound" | "none";
+  accessoryType: "horns" | "spikes" | "wings" | "tendrils" | "crystals" | "none";
+  auraColor: string;
+  scaleModifier: number;
 }
+
+const BODY_SHAPES = ["round", "angular", "spiky", "amorphous", "tall", "wide"] as const;
+const EYE_STYLES = ["single", "multiple", "slits", "glowing", "compound", "none"] as const;
+const ACCESSORY_TYPES = ["horns", "spikes", "wings", "tendrils", "crystals", "none"] as const;
+
+const BIOME_HUE_RANGES: Record<string, [number, number]> = {
+  "Verdant Cluster": [80, 160],
+  "Frozen Expanse": [180, 240],
+  "Inferno Sector": [0, 40],
+  "Void Realm": [260, 320],
+  "Celestial Heights": [40, 80],
+};
 
 const ENEMY_BASE_TYPES: SpriteType[] = ["enemy_basic", "enemy_eye", "enemy_crystal"];
 
-export function generateEnemyVariant(enemyName: string, planetId: number, enemyIndex: number): EnemyVariant {
+function hashString(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return Math.abs(hash);
+}
+
+export function generateEnemyAppearance(
+  enemyName: string, 
+  enemyType: string,
+  planetId: number, 
+  enemyIndex: number,
+  region: string = "Verdant Cluster"
+): EnemyAppearance {
+  const nameHash = hashString(enemyName + enemyType);
+  const uniqueSeed = nameHash + planetId * 1000 + enemyIndex * 7;
+  
   const nameLower = enemyName.toLowerCase();
+  const typeLower = enemyType.toLowerCase();
   
   let baseType: SpriteType = "enemy_basic";
-  if (nameLower.includes("eye") || nameLower.includes("watcher") || nameLower.includes("seer") || nameLower.includes("gazer")) {
+  if (typeLower.includes("eye") || typeLower.includes("watcher") || typeLower.includes("seer") || 
+      typeLower.includes("gazer") || typeLower.includes("observer")) {
     baseType = "enemy_eye";
-  } else if (nameLower.includes("crystal") || nameLower.includes("shard") || nameLower.includes("gem") || nameLower.includes("prism")) {
+  } else if (typeLower.includes("crystal") || typeLower.includes("shard") || typeLower.includes("gem") || 
+             typeLower.includes("prism") || typeLower.includes("geode")) {
     baseType = "enemy_crystal";
-  } else if (nameLower.includes("golem") || nameLower.includes("construct") || nameLower.includes("machine")) {
+  } else if (typeLower.includes("golem") || typeLower.includes("construct") || typeLower.includes("machine") ||
+             typeLower.includes("automaton") || typeLower.includes("drone")) {
     baseType = "enemy_crystal";
-  } else if (nameLower.includes("ghost") || nameLower.includes("phantom") || nameLower.includes("spirit") || nameLower.includes("specter")) {
+  } else if (typeLower.includes("ghost") || typeLower.includes("phantom") || typeLower.includes("spirit") || 
+             typeLower.includes("specter") || typeLower.includes("wraith")) {
     baseType = "enemy_eye";
+  } else if (typeLower.includes("slime") || typeLower.includes("blob") || typeLower.includes("ooze") ||
+             typeLower.includes("jelly")) {
+    baseType = "enemy_basic";
   } else {
-    baseType = ENEMY_BASE_TYPES[(planetId + enemyIndex) % ENEMY_BASE_TYPES.length];
+    baseType = ENEMY_BASE_TYPES[uniqueSeed % ENEMY_BASE_TYPES.length];
   }
   
-  const seed = (planetId * 1000 + enemyIndex * 7 + nameLower.charCodeAt(0)) % 360;
-  const hueRotate = seed;
+  const hueRange = BIOME_HUE_RANGES[region] || [0, 360];
+  const hueSpread = hueRange[1] - hueRange[0];
+  const baseHue = hueRange[0] + ((uniqueSeed * 37) % hueSpread);
+  const hueVariation = ((nameHash % 60) - 30);
+  const hueRotate = (baseHue + hueVariation + 360) % 360;
   
-  const satSeed = ((planetId * 13 + enemyIndex * 23) % 60) + 70;
-  const saturation = satSeed;
+  const saturation = 70 + ((uniqueSeed * 13) % 50);
+  const brightness = 80 + ((uniqueSeed * 11) % 40);
   
-  const brightSeed = ((planetId * 7 + enemyIndex * 11) % 40) + 80;
-  const brightness = brightSeed;
+  const glowHue = (hueRotate + 120 + (uniqueSeed % 60)) % 360;
+  const glowColor = `hsl(${glowHue}, 80%, 60%)`;
+  const hasGlow = (uniqueSeed % 4) === 0;
   
-  const glowHue = (hueRotate + 180) % 360;
-  const glowColor = `hsl(${glowHue}, 70%, 60%)`;
+  const bodyShape = BODY_SHAPES[uniqueSeed % BODY_SHAPES.length];
+  const eyeStyle = EYE_STYLES[(uniqueSeed * 3) % EYE_STYLES.length];
+  const accessoryType = ACCESSORY_TYPES[(uniqueSeed * 7) % ACCESSORY_TYPES.length];
   
-  const hasGlow = (planetId + enemyIndex) % 3 === 0;
+  const auraHue = (hueRotate + 60) % 360;
+  const auraColor = `hsla(${auraHue}, 70%, 50%, 0.3)`;
   
+  const scaleModifier = 0.85 + ((uniqueSeed % 30) / 100);
+
   return {
     baseType,
     hueRotate,
@@ -188,63 +435,137 @@ export function generateEnemyVariant(enemyName: string, planetId: number, enemyI
     brightness,
     glowColor,
     hasGlow,
+    bodyShape,
+    eyeStyle,
+    accessoryType,
+    auraColor,
+    scaleModifier,
   };
 }
 
 export function EnemySprite({ 
   enemyName, 
+  enemyType = "",
   planetId, 
   enemyIndex,
+  region = "Verdant Cluster",
   size = 64,
   animation = "menace",
   isBoss = false,
+  isChasing = false,
   className = "",
   style = {},
 }: {
   enemyName: string;
+  enemyType?: string;
   planetId: number;
   enemyIndex: number;
+  region?: string;
   size?: number;
   animation?: AnimationType;
   isBoss?: boolean;
+  isChasing?: boolean;
   className?: string;
   style?: CSSProperties;
 }) {
-  const variant = useMemo(() => 
-    generateEnemyVariant(enemyName, planetId, enemyIndex), 
-    [enemyName, planetId, enemyIndex]
+  const appearance = useMemo(() => 
+    generateEnemyAppearance(enemyName, enemyType, planetId, enemyIndex, region), 
+    [enemyName, enemyType, planetId, enemyIndex, region]
   );
+
+  const effectiveAnimation = isChasing ? "attack" : animation;
+  const effectiveSize = size * appearance.scaleModifier;
 
   if (isBoss) {
     return (
-      <Sprite
-        type="boss"
-        size={size * 1.5}
-        animation={animation}
-        glow={true}
-        glowColor="#ff4444"
-        hueRotate={(planetId * 30) % 360}
-        saturation={120}
-        brightness={110}
-        className={className}
-        style={style}
-      />
+      <div className="relative" style={{ width: size * 1.5, height: size * 1.5 }}>
+        <div 
+          className="absolute inset-0 rounded-full animate-pulse"
+          style={{
+            background: `radial-gradient(circle, ${appearance.auraColor} 0%, transparent 70%)`,
+            transform: "scale(1.5)",
+          }}
+        />
+        <Sprite
+          type="boss"
+          size={size * 1.5}
+          animation={effectiveAnimation}
+          glow={true}
+          glowColor="#ff4444"
+          hueRotate={(planetId * 30) % 360}
+          saturation={120}
+          brightness={110}
+          className={className}
+          style={style}
+        />
+      </div>
     );
   }
 
   return (
-    <Sprite
-      type={variant.baseType}
-      size={size}
-      animation={animation}
-      glow={variant.hasGlow}
-      glowColor={variant.glowColor}
-      hueRotate={variant.hueRotate}
-      saturation={variant.saturation}
-      brightness={variant.brightness}
-      className={className}
-      style={style}
-    />
+    <div className="relative" style={{ width: effectiveSize, height: effectiveSize }}>
+      {appearance.hasGlow && (
+        <div 
+          className="absolute inset-0 rounded-full"
+          style={{
+            background: `radial-gradient(circle, ${appearance.auraColor} 0%, transparent 60%)`,
+            transform: "scale(1.3)",
+            animation: "pulse 2s ease-in-out infinite",
+          }}
+        />
+      )}
+      <Sprite
+        type={appearance.baseType}
+        size={effectiveSize}
+        animation={effectiveAnimation}
+        glow={appearance.hasGlow || isChasing}
+        glowColor={isChasing ? "#ff0000" : appearance.glowColor}
+        hueRotate={appearance.hueRotate}
+        saturation={appearance.saturation}
+        brightness={isChasing ? appearance.brightness + 20 : appearance.brightness}
+        className={className}
+        style={style}
+      />
+      {appearance.accessoryType !== "none" && (
+        <div 
+          className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/4"
+          style={{
+            width: effectiveSize * 0.4,
+            height: effectiveSize * 0.3,
+            opacity: 0.8,
+          }}
+        >
+          {appearance.accessoryType === "horns" && (
+            <div className="flex justify-between w-full">
+              <div 
+                className="w-2 h-4 rounded-t-full" 
+                style={{ 
+                  backgroundColor: appearance.glowColor,
+                  transform: "rotate(-20deg)",
+                }}
+              />
+              <div 
+                className="w-2 h-4 rounded-t-full" 
+                style={{ 
+                  backgroundColor: appearance.glowColor,
+                  transform: "rotate(20deg)",
+                }}
+              />
+            </div>
+          )}
+          {appearance.accessoryType === "crystals" && (
+            <div 
+              className="w-3 h-5 mx-auto"
+              style={{ 
+                backgroundColor: appearance.glowColor,
+                clipPath: "polygon(50% 0%, 100% 100%, 0% 100%)",
+                filter: `drop-shadow(0 0 4px ${appearance.glowColor})`,
+              }}
+            />
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -352,4 +673,8 @@ export function PlayerSprite({
       style={style}
     />
   );
+}
+
+export function generateEnemyVariant(enemyName: string, planetId: number, enemyIndex: number): EnemyAppearance {
+  return generateEnemyAppearance(enemyName, "", planetId, enemyIndex);
 }
