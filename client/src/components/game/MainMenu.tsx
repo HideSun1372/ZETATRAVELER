@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRPG } from "@/lib/stores/useRPG";
+import { Howl } from "howler";
 
 interface SaveSlot {
   slot: number;
@@ -25,6 +26,24 @@ export function MainMenu() {
   const [selectedSlot, setSelectedSlot] = useState(0);
   const [saveSlots, setSaveSlots] = useState<SaveSlot[]>([]);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
+  const musicRef = useRef<Howl | null>(null);
+
+  // Play menu music
+  useEffect(() => {
+    musicRef.current = new Howl({
+      src: ['/audio/faint_glow.mp3'],
+      loop: true,
+      volume: 0.5,
+    });
+    musicRef.current.play();
+
+    return () => {
+      if (musicRef.current) {
+        musicRef.current.stop();
+        musicRef.current.unload();
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const slots: SaveSlot[] = [];
