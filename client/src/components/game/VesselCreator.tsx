@@ -59,7 +59,6 @@ export function VesselCreator({ onComplete }: VesselCreatorProps) {
     { type: "dialogue", text: "FASCINATING." },
     { type: "dialogue", text: "TRULY REMARKABLE CHOICES." },
     { type: "choice", text: "WHAT TASTE DOES IT PREFER?", options: foodOptions },
-    { type: "choice", text: "WHAT FLOWS THROUGH ITS VEINS?", options: bloodOptions },
     { type: "choice", text: "WHICH HUE CALLS TO IT?", options: colorOptions },
     { type: "choice", text: "GRANT IT A TOKEN.", options: giftOptions },
     { type: "choice", text: "WHAT DO YOU THINK OF YOUR WORK? IT CANNOT HEAR YOU.", options: feelingOptions },
