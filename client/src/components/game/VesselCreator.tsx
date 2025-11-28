@@ -63,7 +63,7 @@ export function VesselCreator({ onComplete }: VesselCreatorProps) {
     { type: "choice", text: "GRANT IT A TOKEN.", options: giftOptions },
     { type: "choice", text: "WHAT DO YOU THINK OF YOUR WORK? IT CANNOT HEAR YOU.", options: feelingOptions },
     { type: "choice", text: "WERE ALL YOUR ANSWERS TRUE?", options: honestOptions },
-    { type: "dialogue", text: "YOU ACCEPT WHATEVER MAY COME." },
+    { type: "choice", text: "YOU ACCEPT WHATEVER MAY COME.", options: honestOptions },
     { type: "dialogue", text: "HOW PECULIAR." },
     { type: "dialogue", text: "EVERYTHING YOU HAVE MADE," },
     { type: "dialogue", text: "EVERY CAREFUL DECISION," },
