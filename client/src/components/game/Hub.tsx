@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { useRPG } from "../../lib/stores/useRPG";
 import { GalaxyMap } from "./GalaxyMap";
 import { NPCSprite, PlayerSprite, Sprite } from "./Sprite";
@@ -65,6 +65,11 @@ export function Hub() {
   
   const keysPressed = useRef<Set<string>>(new Set());
   const animationRef = useRef<number>();
+  const playerPosRef = useRef(playerPosition);
+
+  useEffect(() => {
+    playerPosRef.current = playerPosition;
+  }, [playerPosition]);
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -200,7 +205,7 @@ export function Hub() {
     return pattern;
   }, []);
 
-  const checkCollision = (newX: number, newY: number): boolean => {
+  const checkCollision = useCallback((newX: number, newY: number): boolean => {
     const tileX = Math.floor(newX / TILE_SIZE);
     const tileY = Math.floor(newY / TILE_SIZE);
     
@@ -218,18 +223,25 @@ export function Hub() {
     }
     
     return false;
-  };
+  }, [decorations]);
 
-  const checkInteraction = () => {
+  const checkInteraction = useCallback(() => {
+    const pos = playerPosRef.current;
+    console.log("Checking interaction at position:", pos);
+    
     for (const npc of npcs) {
       const npcPixelX = npc.x * TILE_SIZE;
       const npcPixelY = npc.y * TILE_SIZE;
       const distance = Math.sqrt(
-        Math.pow(playerPosition.x - npcPixelX, 2) + 
-        Math.pow(playerPosition.y - npcPixelY, 2)
+        Math.pow(pos.x - npcPixelX, 2) + 
+        Math.pow(pos.y - npcPixelY, 2)
       );
       
-      if (distance < TILE_SIZE * 1.2) {
+      console.log(`Distance to ${npc.name}: ${distance}, threshold: ${TILE_SIZE * 1.5}`);
+      
+      if (distance < TILE_SIZE * 1.5) {
+        console.log("Interacting with:", npc.name);
+        
         if (npc.id === "galaxy_portal") {
           setShowGalaxyMap(true);
           return;
@@ -257,9 +269,9 @@ export function Hub() {
         return;
       }
     }
-  };
+  }, [npcs, maxHp, hopeBonus.hp, travelers, heal, recruitTraveler, advanceLakineDialogue]);
 
-  const advanceDialogue = () => {
+  const advanceDialogue = useCallback(() => {
     if (!currentNPC) return;
     
     if (isTyping) {
@@ -276,7 +288,7 @@ export function Hub() {
       setCurrentNPC(null);
       setDialogueIndex(0);
     }
-  };
+  }, [currentNPC, isTyping, dialogueIndex]);
 
   useEffect(() => {
     if (showDialogue && currentNPC) {
@@ -305,10 +317,12 @@ export function Hub() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (showPauseMenu) return;
       if (showGalaxyMap) return;
       
       if (showDialogue) {
-        if (e.key === "z" || e.key === "Z" || e.key === "Enter") {
+        if (e.key === "z" || e.key === "Z" || e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
           advanceDialogue();
         }
         return;
@@ -316,7 +330,8 @@ export function Hub() {
       
       keysPressed.current.add(e.key.toLowerCase());
       
-      if (e.key === "z" || e.key === "Z" || e.key === "Enter") {
+      if (e.key === "z" || e.key === "Z" || e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
         checkInteraction();
       }
     };
@@ -332,7 +347,7 @@ export function Hub() {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [showDialogue, showGalaxyMap, dialogueIndex, currentNPC, isTyping]);
+  }, [showDialogue, showGalaxyMap, showPauseMenu, advanceDialogue, checkInteraction]);
 
   useEffect(() => {
     const gameLoop = () => {
@@ -360,8 +375,9 @@ export function Hub() {
       setPlayerMoving(isMoving);
       
       if (isMoving) {
-        const newX = playerPosition.x + dx;
-        const newY = playerPosition.y + dy;
+        const currentPos = playerPosRef.current;
+        const newX = currentPos.x + dx;
+        const newY = currentPos.y + dy;
         
         const boundedX = Math.max(TILE_SIZE, Math.min((MAP_WIDTH - 2) * TILE_SIZE, newX));
         const boundedY = Math.max(TILE_SIZE, Math.min((MAP_HEIGHT - 2) * TILE_SIZE, newY));
@@ -381,7 +397,7 @@ export function Hub() {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [playerPosition, showDialogue, showGalaxyMap, showPauseMenu]);
+  }, [showDialogue, showGalaxyMap, showPauseMenu, checkCollision, setPlayerPosition]);
 
   useEffect(() => {
     if (playerPosition.x === 0 && playerPosition.y === 0) {
@@ -653,7 +669,7 @@ export function Hub() {
         className="mt-2 text-gray-500 text-xs"
         style={{ fontFamily: "'Courier New', monospace" }}
       >
-        WASD: Move | Z: Interact | ESC: Pause
+        WASD: Move | Z/Enter/Space: Interact | ESC: Pause
       </div>
       
       <div 

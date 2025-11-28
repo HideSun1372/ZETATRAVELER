@@ -109,27 +109,34 @@ export function Sprite({
     return filterParts.length > 0 ? filterParts.join(" ") : undefined;
   }, [hueRotate, saturation, brightness, glow, glowColor, size]);
 
-  const spriteStyle: CSSProperties = {
-    width: size,
-    height: size,
-    backgroundImage: `url(${SPRITE_PATHS[type]})`,
-    backgroundSize: "contain",
-    backgroundRepeat: "no-repeat",
-    backgroundPosition: "center",
-    imageRendering: "pixelated",
-    filter: filters,
-    transform: flipX ? "scaleX(-1)" : undefined,
-    ["--glow-color" as string]: glowColor,
-    ...style,
-  };
-
   const animationClass = ANIMATION_CLASSES[animation] || "";
 
   return (
     <div 
       className={`${className} ${animationClass}`.trim()}
-      style={spriteStyle}
-    />
+      style={{
+        width: size,
+        height: size,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        ...style,
+      }}
+    >
+      <img 
+        src={SPRITE_PATHS[type]}
+        alt={type}
+        style={{
+          width: size,
+          height: size,
+          objectFit: "contain",
+          imageRendering: "pixelated",
+          filter: filters,
+          transform: flipX ? "scaleX(-1)" : undefined,
+        }}
+        draggable={false}
+      />
+    </div>
   );
 }
 
