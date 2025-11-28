@@ -15,6 +15,9 @@ export interface Enemy {
   killed: boolean;
   talkProgress: number;
   canSpare: boolean;
+  planetId?: number;
+  isBoss?: boolean;
+  isSecretBoss?: boolean;
 }
 
 export type PuzzleType = "simon" | "rhythm" | "misdirection";

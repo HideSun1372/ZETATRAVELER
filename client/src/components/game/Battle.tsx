@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useRPG } from "../../lib/stores/useRPG";
 import { getEnemyDialogue, getBossDialogue, TalkOption } from "../../lib/data/enemyDialogue";
-import { Sprite, getEnemySpriteType } from "./Sprite";
+import { EnemySprite, getEnemySpriteType } from "./Sprite";
 
 interface Bullet {
   id: number;
@@ -799,12 +799,14 @@ export function Battle() {
 
         {battlePhase !== "enemy_attack" && !showMessage && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className={`${currentEnemy.canSpare ? 'animate-pulse' : ''}`}>
-              <Sprite 
-                type={isBoss ? "boss" : getEnemySpriteType(currentEnemy.name)} 
-                size={isBoss ? 128 : 96}
-                glow={currentEnemy.canSpare}
-                glowColor={currentEnemy.canSpare ? "#FFD700" : undefined}
+            <div className={`${currentEnemy.canSpare ? 'animate-sprite-shimmer' : ''}`}>
+              <EnemySprite 
+                enemyName={currentEnemy.name}
+                planetId={currentEnemy.planetId || 1}
+                enemyIndex={currentEnemy.id ? parseInt(currentEnemy.id.replace(/\D/g, '')) || 0 : 0}
+                size={isBoss ? 140 : 110}
+                isBoss={isBoss ?? false}
+                animation={currentEnemy.canSpare ? "shimmer" : "menace"}
               />
             </div>
           </div>

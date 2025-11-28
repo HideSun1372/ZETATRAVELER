@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import { useRPG } from "../../lib/stores/useRPG";
 import { GalaxyMap } from "./GalaxyMap";
-import { Sprite, getNPCSpriteType } from "./Sprite";
+import { NPCSprite, PlayerSprite, Sprite } from "./Sprite";
 import { PauseMenu } from "./PauseMenu";
 
 interface NPC {
@@ -13,10 +13,17 @@ interface NPC {
   dialogue: string[];
 }
 
-const TILE_SIZE = 32;
-const MAP_WIDTH = 20;
-const MAP_HEIGHT = 15;
-const PLAYER_SPEED = 4;
+interface Decoration {
+  x: number;
+  y: number;
+  type: "console" | "plant" | "light" | "pillar" | "rug" | "crate";
+}
+
+const TILE_SIZE = 48;
+const MAP_WIDTH = 16;
+const MAP_HEIGHT = 12;
+const PLAYER_SPEED = 5;
+const SPRITE_SIZE = 56;
 
 export function Hub() {
   const { 
@@ -53,6 +60,8 @@ export function Hub() {
   const [isTyping, setIsTyping] = useState(false);
   const [showGalaxyMap, setShowGalaxyMap] = useState(false);
   const [showPauseMenu, setShowPauseMenu] = useState(false);
+  const [playerMoving, setPlayerMoving] = useState(false);
+  const [playerFacing, setPlayerFacing] = useState<"left" | "right">("right");
   
   const keysPressed = useRef<Set<string>>(new Set());
   const animationRef = useRef<number>();
@@ -78,8 +87,8 @@ export function Hub() {
     {
       id: "lakine",
       name: "LAKINE",
-      x: 10,
-      y: 7,
+      x: 8,
+      y: 5,
       color: "#FFD700",
       dialogue: [
         "Welcome, ZETATRAVELER.",
@@ -95,8 +104,8 @@ export function Hub() {
     {
       id: "zara",
       name: "ZARA",
-      x: 5,
-      y: 7,
+      x: 4,
+      y: 5,
       color: "#FF69B4",
       dialogue: [
         "Hey there! I'm ZARA.",
@@ -109,8 +118,8 @@ export function Hub() {
     {
       id: "korin",
       name: "KORIN",
-      x: 15,
-      y: 7,
+      x: 12,
+      y: 5,
       color: "#4169E1",
       dialogue: [
         "...",
@@ -123,14 +132,14 @@ export function Hub() {
     {
       id: "mira",
       name: "MIRA",
-      x: 10,
-      y: 10,
+      x: 8,
+      y: 9,
       color: "#32CD32",
       dialogue: [
-        "Oh! A visitor!",
-        "I'm MIRA, the mechanic here.",
-        "I can fix anything... well, almost anything.",
-        "The ship's portal is ready when you are!",
+        "Beep boop! Hello, organic lifeform!",
+        "I am MIRA, repair unit M-1-R-4!",
+        "I can help you fix things! And explore!",
+        "Take me with you? Please? PLEASE?",
         "* MIRA joined your party! *",
       ],
     },
@@ -138,125 +147,156 @@ export function Hub() {
       id: "healer",
       name: "HEALING STATION",
       x: 2,
-      y: 7,
+      y: 8,
       color: "#00FF88",
-      dialogue: [
-        "* You rest at the healing station... *",
-        "* HP fully restored! *",
-      ],
+      dialogue: ["Your HP has been fully restored!", "Stay safe out there, traveler."],
     },
     {
       id: "galaxy_portal",
       name: "GALAXY PORTAL",
-      x: 10,
-      y: 3,
+      x: 14,
+      y: 6,
       color: "#9B59B6",
-      dialogue: [
-        "* The Galaxy Portal hums with energy... *",
-        "* 50 planets await across 5 regions... *",
-        "* Opening Galaxy Map... *",
-      ],
+      dialogue: ["Step into the portal to view the Galaxy Map...", "Choose your next destination wisely."],
     },
   ], []);
 
   const walls = useMemo(() => {
-    const w: { x: number; y: number }[] = [];
+    const w: { x: number; y: number; isCorner?: boolean }[] = [];
     for (let x = 0; x < MAP_WIDTH; x++) {
-      w.push({ x, y: 0 });
-      w.push({ x, y: MAP_HEIGHT - 1 });
+      w.push({ x, y: 0, isCorner: x === 0 || x === MAP_WIDTH - 1 });
+      w.push({ x, y: MAP_HEIGHT - 1, isCorner: x === 0 || x === MAP_WIDTH - 1 });
     }
-    for (let y = 0; y < MAP_HEIGHT; y++) {
-      w.push({ x: 0, y });
-      w.push({ x: MAP_WIDTH - 1, y });
+    for (let y = 1; y < MAP_HEIGHT - 1; y++) {
+      w.push({ x: 0, y, isCorner: false });
+      w.push({ x: MAP_WIDTH - 1, y, isCorner: false });
     }
     return w;
   }, []);
 
-  const checkCollision = (x: number, y: number): boolean => {
-    const tileX = Math.floor(x / TILE_SIZE);
-    const tileY = Math.floor(y / TILE_SIZE);
+  const decorations: Decoration[] = useMemo(() => [
+    { x: 3, y: 2, type: "console" },
+    { x: 13, y: 2, type: "console" },
+    { x: 1, y: 3, type: "plant" },
+    { x: 14, y: 3, type: "plant" },
+    { x: 1, y: 9, type: "crate" },
+    { x: 14, y: 9, type: "crate" },
+    { x: 6, y: 1, type: "light" },
+    { x: 10, y: 1, type: "light" },
+    { x: 5, y: 6, type: "pillar" },
+    { x: 11, y: 6, type: "pillar" },
+    { x: 7, y: 7, type: "rug" },
+    { x: 8, y: 7, type: "rug" },
+    { x: 9, y: 7, type: "rug" },
+  ], []);
+
+  const floorPattern = useMemo(() => {
+    const pattern: { x: number; y: number; variant: number }[] = [];
+    for (let y = 1; y < MAP_HEIGHT - 1; y++) {
+      for (let x = 1; x < MAP_WIDTH - 1; x++) {
+        pattern.push({ x, y, variant: (x + y) % 4 });
+      }
+    }
+    return pattern;
+  }, []);
+
+  const checkCollision = (newX: number, newY: number): boolean => {
+    const tileX = Math.floor(newX / TILE_SIZE);
+    const tileY = Math.floor(newY / TILE_SIZE);
     
-    if (walls.some(w => w.x === tileX && w.y === tileY)) return true;
-    
-    for (const npc of npcs) {
-      if (Math.abs(tileX - npc.x) < 1 && Math.abs(tileY - npc.y) < 1) return true;
+    if (tileX <= 0 || tileX >= MAP_WIDTH - 1 || tileY <= 0 || tileY >= MAP_HEIGHT - 1) {
+      return true;
+    }
+
+    for (const dec of decorations) {
+      if (dec.type === "pillar" || dec.type === "crate" || dec.type === "console") {
+        if (Math.abs(newX - dec.x * TILE_SIZE) < TILE_SIZE * 0.7 && 
+            Math.abs(newY - dec.y * TILE_SIZE) < TILE_SIZE * 0.7) {
+          return true;
+        }
+      }
     }
     
     return false;
   };
 
-  const playerPosRef = useRef(playerPosition);
-  playerPosRef.current = playerPosition;
-
   const checkInteraction = () => {
-    const pos = playerPosRef.current;
-    const tileX = Math.floor(pos.x / TILE_SIZE);
-    const tileY = Math.floor(pos.y / TILE_SIZE);
-    
-    console.log("Checking interaction at tile:", tileX, tileY);
-    
     for (const npc of npcs) {
-      if (Math.abs(tileX - npc.x) <= 1 && Math.abs(tileY - npc.y) <= 1) {
-        console.log("Found NPC:", npc.name);
+      const npcPixelX = npc.x * TILE_SIZE;
+      const npcPixelY = npc.y * TILE_SIZE;
+      const distance = Math.sqrt(
+        Math.pow(playerPosition.x - npcPixelX, 2) + 
+        Math.pow(playerPosition.y - npcPixelY, 2)
+      );
+      
+      if (distance < TILE_SIZE * 1.2) {
+        if (npc.id === "galaxy_portal") {
+          setShowGalaxyMap(true);
+          return;
+        }
+        
+        if (npc.id === "healer") {
+          heal(maxHp + hopeBonus.hp);
+        }
+        
+        if (["zara", "korin", "mira"].includes(npc.id)) {
+          const traveler = travelers.find(t => t.id === npc.id);
+          if (traveler && !traveler.recruited) {
+            recruitTraveler(npc.id);
+          }
+        }
+        
+        if (npc.id === "lakine") {
+          advanceLakineDialogue();
+        }
+        
         setCurrentNPC(npc);
-        setShowDialogue(true);
         setDialogueIndex(0);
+        setShowDialogue(true);
         setDisplayedText("");
-        setIsTyping(true);
         return;
       }
     }
-    
-    console.log("No interaction found");
   };
 
-  useEffect(() => {
-    if (!showDialogue || !currentNPC || !isTyping) return;
-    
-    const fullText = currentNPC.dialogue[dialogueIndex];
-    if (displayedText.length < fullText.length) {
-      const timer = setTimeout(() => {
-        setDisplayedText(fullText.slice(0, displayedText.length + 1));
-      }, 30);
-      return () => clearTimeout(timer);
-    } else {
-      setIsTyping(false);
-    }
-  }, [displayedText, currentNPC, dialogueIndex, showDialogue, isTyping]);
-
   const advanceDialogue = () => {
+    if (!currentNPC) return;
+    
     if (isTyping) {
-      if (currentNPC) {
-        setDisplayedText(currentNPC.dialogue[dialogueIndex]);
-        setIsTyping(false);
-      }
+      setDisplayedText(currentNPC.dialogue[dialogueIndex]);
+      setIsTyping(false);
       return;
     }
     
-    if (currentNPC && dialogueIndex < currentNPC.dialogue.length - 1) {
+    if (dialogueIndex < currentNPC.dialogue.length - 1) {
       setDialogueIndex(dialogueIndex + 1);
       setDisplayedText("");
-      setIsTyping(true);
     } else {
-      if (currentNPC && ["zara", "korin", "mira"].includes(currentNPC.id)) {
-        const traveler = travelers.find(t => t.id === currentNPC.id);
-        if (traveler && !traveler.recruited) {
-          recruitTraveler(currentNPC.id);
-        }
-      }
-      if (currentNPC?.id === "lakine") {
-        advanceLakineDialogue();
-      }
-      if (currentNPC?.id === "healer") {
-        heal(maxHp);
-      }
-      if (currentNPC?.id === "galaxy_portal") {
-        setShowGalaxyMap(true);
-      }
       setShowDialogue(false);
       setCurrentNPC(null);
+      setDialogueIndex(0);
     }
   };
+
+  useEffect(() => {
+    if (showDialogue && currentNPC) {
+      const fullText = currentNPC.dialogue[dialogueIndex];
+      let charIndex = 0;
+      setIsTyping(true);
+      
+      const typeInterval = setInterval(() => {
+        if (charIndex < fullText.length) {
+          setDisplayedText(fullText.slice(0, charIndex + 1));
+          charIndex++;
+        } else {
+          setIsTyping(false);
+          clearInterval(typeInterval);
+        }
+      }, 30);
+      
+      return () => clearInterval(typeInterval);
+    }
+  }, [showDialogue, currentNPC, dialogueIndex]);
 
   const handlePlanetSelect = (planetId: number) => {
     setShowGalaxyMap(false);
@@ -296,7 +336,8 @@ export function Hub() {
 
   useEffect(() => {
     const gameLoop = () => {
-      if (showDialogue || showGalaxyMap) {
+      if (showDialogue || showGalaxyMap || showPauseMenu) {
+        setPlayerMoving(false);
         animationRef.current = requestAnimationFrame(gameLoop);
         return;
       }
@@ -306,10 +347,19 @@ export function Hub() {
       
       if (keysPressed.current.has("w") || keysPressed.current.has("arrowup")) dy -= PLAYER_SPEED;
       if (keysPressed.current.has("s") || keysPressed.current.has("arrowdown")) dy += PLAYER_SPEED;
-      if (keysPressed.current.has("a") || keysPressed.current.has("arrowleft")) dx -= PLAYER_SPEED;
-      if (keysPressed.current.has("d") || keysPressed.current.has("arrowright")) dx += PLAYER_SPEED;
+      if (keysPressed.current.has("a") || keysPressed.current.has("arrowleft")) {
+        dx -= PLAYER_SPEED;
+        setPlayerFacing("left");
+      }
+      if (keysPressed.current.has("d") || keysPressed.current.has("arrowright")) {
+        dx += PLAYER_SPEED;
+        setPlayerFacing("right");
+      }
       
-      if (dx !== 0 || dy !== 0) {
+      const isMoving = dx !== 0 || dy !== 0;
+      setPlayerMoving(isMoving);
+      
+      if (isMoving) {
         const newX = playerPosition.x + dx;
         const newY = playerPosition.y + dy;
         
@@ -331,24 +381,139 @@ export function Hub() {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [playerPosition, showDialogue, showGalaxyMap]);
+  }, [playerPosition, showDialogue, showGalaxyMap, showPauseMenu]);
 
   useEffect(() => {
     if (playerPosition.x === 0 && playerPosition.y === 0) {
-      setPlayerPosition({ x: 10 * TILE_SIZE, y: 9 * TILE_SIZE });
+      setPlayerPosition({ x: 8 * TILE_SIZE, y: 7 * TILE_SIZE });
     }
   }, []);
 
+  const getDecorationStyle = (dec: Decoration) => {
+    const base = {
+      position: "absolute" as const,
+      left: dec.x * TILE_SIZE,
+      top: dec.y * TILE_SIZE,
+      width: TILE_SIZE,
+      height: TILE_SIZE,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+    };
+
+    switch (dec.type) {
+      case "console":
+        return { ...base, fontSize: TILE_SIZE * 0.6 };
+      case "plant":
+        return { ...base, fontSize: TILE_SIZE * 0.7 };
+      case "light":
+        return { ...base, fontSize: TILE_SIZE * 0.4 };
+      case "pillar":
+        return { ...base, fontSize: TILE_SIZE * 0.8 };
+      case "rug":
+        return { ...base };
+      case "crate":
+        return { ...base, fontSize: TILE_SIZE * 0.6 };
+      default:
+        return base;
+    }
+  };
+
+  const renderDecoration = (dec: Decoration) => {
+    switch (dec.type) {
+      case "console":
+        return (
+          <div 
+            className="bg-gray-800 border-2 border-cyan-500 rounded flex items-center justify-center"
+            style={{ width: TILE_SIZE * 0.8, height: TILE_SIZE * 0.6 }}
+          >
+            <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse" />
+            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse ml-1" />
+          </div>
+        );
+      case "plant":
+        return (
+          <div className="text-green-500 animate-sprite-idle" style={{ fontSize: TILE_SIZE * 0.7 }}>
+            🌿
+          </div>
+        );
+      case "light":
+        return (
+          <div 
+            className="rounded-full animate-pulse"
+            style={{ 
+              width: TILE_SIZE * 0.3, 
+              height: TILE_SIZE * 0.3,
+              backgroundColor: "#FFD700",
+              boxShadow: "0 0 20px #FFD700, 0 0 40px #FFA500"
+            }}
+          />
+        );
+      case "pillar":
+        return (
+          <div 
+            className="bg-gradient-to-b from-gray-600 to-gray-800 rounded-t"
+            style={{ width: TILE_SIZE * 0.4, height: TILE_SIZE * 0.9 }}
+          />
+        );
+      case "rug":
+        return (
+          <div 
+            className="bg-purple-900/50 rounded"
+            style={{ width: TILE_SIZE, height: TILE_SIZE }}
+          />
+        );
+      case "crate":
+        return (
+          <div 
+            className="bg-amber-800 border-2 border-amber-600 rounded"
+            style={{ width: TILE_SIZE * 0.7, height: TILE_SIZE * 0.7 }}
+          >
+            <div className="w-full h-1 bg-amber-600 mt-2" />
+            <div className="w-full h-1 bg-amber-600 mt-2" />
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
-    <div className="w-full h-full bg-black flex flex-col items-center justify-center select-none">
+    <div className="w-full h-full bg-black flex flex-col items-center justify-center select-none overflow-hidden">
+      <h2 
+        className="text-white text-xl mb-2"
+        style={{ fontFamily: "'Courier New', monospace" }}
+      >
+        {playerName ? `${playerName}'s Hub` : "SPACE STATION HUB"}
+      </h2>
+
       <div 
-        className="relative border-4 border-white"
+        className="relative overflow-hidden"
         style={{ 
           width: MAP_WIDTH * TILE_SIZE, 
           height: MAP_HEIGHT * TILE_SIZE,
-          backgroundColor: "#1a1a2e"
+          borderRadius: 8,
+          boxShadow: "0 0 30px rgba(100, 100, 255, 0.3), inset 0 0 60px rgba(0, 0, 50, 0.5)"
         }}
       >
+        {floorPattern.map((tile) => (
+          <div
+            key={`floor-${tile.x}-${tile.y}`}
+            className="absolute"
+            style={{
+              left: tile.x * TILE_SIZE,
+              top: tile.y * TILE_SIZE,
+              width: TILE_SIZE,
+              height: TILE_SIZE,
+              backgroundColor: tile.variant === 0 ? "#1a1a2e" : 
+                              tile.variant === 1 ? "#16162a" : 
+                              tile.variant === 2 ? "#1e1e35" : "#141428",
+              borderRight: tile.variant % 2 === 0 ? "1px solid #252540" : "none",
+              borderBottom: tile.variant % 2 === 1 ? "1px solid #252540" : "none",
+            }}
+          />
+        ))}
+
         {walls.map((wall, i) => (
           <div
             key={`wall-${i}`}
@@ -358,28 +523,42 @@ export function Hub() {
               top: wall.y * TILE_SIZE,
               width: TILE_SIZE,
               height: TILE_SIZE,
-              backgroundColor: "#333366",
+              background: wall.isCorner 
+                ? "linear-gradient(135deg, #4a4a6a 0%, #2a2a4a 100%)"
+                : wall.y === 0 
+                  ? "linear-gradient(to bottom, #5a5a8a 0%, #3a3a5a 100%)"
+                  : wall.y === MAP_HEIGHT - 1
+                    ? "linear-gradient(to top, #3a3a5a 0%, #4a4a6a 100%)"
+                    : "linear-gradient(to right, #3a3a5a 0%, #4a4a6a 50%, #3a3a5a 100%)",
+              borderTop: wall.y === 0 ? "3px solid #6a6a9a" : "none",
+              borderBottom: wall.y === MAP_HEIGHT - 1 ? "3px solid #2a2a4a" : "none",
+              borderLeft: wall.x === 0 ? "3px solid #6a6a9a" : "none",
+              borderRight: wall.x === MAP_WIDTH - 1 ? "3px solid #2a2a4a" : "none",
             }}
           />
+        ))}
+
+        {decorations.map((dec, i) => (
+          <div key={`dec-${i}`} style={getDecorationStyle(dec)}>
+            {renderDecoration(dec)}
+          </div>
         ))}
         
         {npcs.map((npc) => (
           <div
             key={npc.id}
-            className="absolute flex items-center justify-center"
+            className="absolute"
             style={{
-              left: npc.x * TILE_SIZE,
-              top: npc.y * TILE_SIZE,
-              width: TILE_SIZE,
-              height: TILE_SIZE,
+              left: npc.x * TILE_SIZE + (TILE_SIZE - SPRITE_SIZE) / 2,
+              top: npc.y * TILE_SIZE + (TILE_SIZE - SPRITE_SIZE) / 2,
+              width: SPRITE_SIZE,
+              height: SPRITE_SIZE,
+              zIndex: npc.y,
             }}
           >
-            <Sprite 
-              type={getNPCSpriteType(npc.id)} 
-              size={TILE_SIZE} 
-              animate={npc.id === "galaxy_portal"}
-              glow={npc.id === "healer" || npc.id === "galaxy_portal"}
-              glowColor={npc.id === "healer" ? "#00FF88" : "#9B59B6"}
+            <NPCSprite 
+              npcId={npc.id} 
+              size={SPRITE_SIZE}
             />
           </div>
         ))}
@@ -387,20 +566,25 @@ export function Hub() {
         <div
           className="absolute"
           style={{
-            left: playerPosition.x,
-            top: playerPosition.y,
-            width: TILE_SIZE,
-            height: TILE_SIZE,
+            left: playerPosition.x + (TILE_SIZE - SPRITE_SIZE) / 2,
+            top: playerPosition.y + (TILE_SIZE - SPRITE_SIZE) / 2,
+            width: SPRITE_SIZE,
+            height: SPRITE_SIZE,
             transition: "left 0.05s, top 0.05s",
+            zIndex: Math.floor(playerPosition.y / TILE_SIZE) + 1,
           }}
         >
-          <Sprite type="player" size={TILE_SIZE} />
+          <PlayerSprite 
+            size={SPRITE_SIZE} 
+            isMoving={playerMoving}
+            flipX={playerFacing === "left"}
+          />
         </div>
         
         {showDialogue && currentNPC && (
           <div
-            className="absolute bottom-0 left-0 right-0 bg-black border-t-4 border-white p-4"
-            style={{ height: "100px" }}
+            className="absolute bottom-0 left-0 right-0 bg-black/95 border-t-4 border-white p-4"
+            style={{ height: "110px", zIndex: 100 }}
           >
             <p 
               className="text-yellow-400 text-sm mb-1"
@@ -420,10 +604,10 @@ export function Hub() {
       </div>
       
       <div 
-        className="mt-4 flex flex-wrap gap-6 text-white"
-        style={{ fontFamily: "'Courier New', monospace" }}
+        className="mt-3 flex flex-wrap gap-4 text-white text-sm"
+        style={{ fontFamily: "'Courier New', monospace", maxWidth: MAP_WIDTH * TILE_SIZE }}
       >
-        <div className="flex gap-4">
+        <div className="flex gap-3">
           <div>
             <span className="text-gray-400">HP:</span> {hp}/{maxHp + hopeBonus.hp}
           </div>
@@ -440,7 +624,7 @@ export function Hub() {
             <span className="text-blue-400">DEF:</span> {def + hopeBonus.def}
           </div>
         </div>
-        <div className="flex gap-4">
+        <div className="flex gap-3">
           <div>
             <span className="text-yellow-400">GOLD:</span> {gold}
           </div>
@@ -448,7 +632,7 @@ export function Hub() {
             <span className="text-cyan-400">HOPE:</span> {hope}
           </div>
           <div>
-            <span className="text-purple-400">NEBULI:</span> {nebuliShards} shards | {nebuliTotal} cores
+            <span className="text-purple-400">NEBULI:</span> {nebuliShards}/{nebuliTotal * 2} cores
           </div>
         </div>
         <div>
@@ -466,14 +650,14 @@ export function Hub() {
       </div>
       
       <div 
-        className="mt-2 text-gray-500 text-sm"
+        className="mt-2 text-gray-500 text-xs"
         style={{ fontFamily: "'Courier New', monospace" }}
       >
-        WASD/Arrows: Move | Z/Enter: Interact | ESC: Pause/Save
+        WASD: Move | Z: Interact | ESC: Pause
       </div>
       
       <div 
-        className="mt-2 flex gap-4"
+        className="mt-1 flex gap-3 text-xs"
         style={{ fontFamily: "'Courier New', monospace" }}
       >
         {travelers.map((t) => (
@@ -481,7 +665,7 @@ export function Hub() {
             key={t.id}
             className={t.recruited ? "text-green-400" : "text-gray-600"}
           >
-            {t.name}: {t.recruited ? "JOINED" : "..."}
+            {t.name}: {t.recruited ? "✓" : "..."}
           </span>
         ))}
       </div>

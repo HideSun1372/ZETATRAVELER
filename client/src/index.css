@@ -42,28 +42,121 @@ canvas {
 }
 
 @keyframes sprite-bob {
-  0% { transform: translateY(0); }
-  100% { transform: translateY(-2px); }
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
 }
 
 @keyframes sprite-float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-4px); }
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  50% { transform: translateY(-6px) rotate(2deg); }
 }
 
 @keyframes sprite-glow-pulse {
-  0%, 100% { filter: brightness(1) drop-shadow(0 0 4px currentColor); }
-  50% { filter: brightness(1.2) drop-shadow(0 0 8px currentColor); }
+  0%, 100% { filter: brightness(1) drop-shadow(0 0 6px var(--glow-color, #fff)); }
+  50% { filter: brightness(1.3) drop-shadow(0 0 12px var(--glow-color, #fff)); }
+}
+
+@keyframes sprite-walk {
+  0%, 100% { transform: translateY(0) scaleX(1); }
+  25% { transform: translateY(-2px) scaleX(0.95); }
+  50% { transform: translateY(0) scaleX(1); }
+  75% { transform: translateY(-2px) scaleX(1.05); }
+}
+
+@keyframes sprite-idle-breathe {
+  0%, 100% { transform: scale(1) translateY(0); }
+  50% { transform: scale(1.02) translateY(-1px); }
+}
+
+@keyframes sprite-attack {
+  0% { transform: translateX(0) scale(1); }
+  30% { transform: translateX(-8px) scale(1.1); }
+  50% { transform: translateX(12px) scale(1.15); }
+  100% { transform: translateX(0) scale(1); }
+}
+
+@keyframes sprite-hurt {
+  0%, 100% { transform: translateX(0); filter: brightness(1); }
+  20% { transform: translateX(-4px); filter: brightness(2) saturate(0); }
+  40% { transform: translateX(4px); filter: brightness(1.5); }
+  60% { transform: translateX(-2px); filter: brightness(1); }
+}
+
+@keyframes sprite-spawn {
+  0% { transform: scale(0) rotate(-180deg); opacity: 0; }
+  50% { transform: scale(1.2) rotate(10deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+@keyframes sprite-shimmer {
+  0%, 100% { filter: brightness(1) hue-rotate(0deg); }
+  50% { filter: brightness(1.2) hue-rotate(15deg); }
+}
+
+@keyframes portal-swirl {
+  0% { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(180deg) scale(1.1); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+
+@keyframes enemy-menace {
+  0%, 100% { transform: translateY(0) scale(1); }
+  25% { transform: translateY(-2px) scale(1.02); }
+  50% { transform: translateY(0) scale(1.05); }
+  75% { transform: translateY(-2px) scale(1.02); }
+}
+
+@keyframes item-sparkle {
+  0%, 100% { filter: brightness(1) drop-shadow(0 0 4px gold); transform: scale(1) rotate(0deg); }
+  25% { filter: brightness(1.3) drop-shadow(0 0 8px gold); transform: scale(1.05) rotate(5deg); }
+  50% { filter: brightness(1.5) drop-shadow(0 0 12px gold); transform: scale(1.1) rotate(0deg); }
+  75% { filter: brightness(1.3) drop-shadow(0 0 8px gold); transform: scale(1.05) rotate(-5deg); }
 }
 
 .animate-sprite-bob {
-  animation: sprite-bob 0.5s ease-in-out infinite alternate;
+  animation: sprite-bob 0.8s ease-in-out infinite;
 }
 
 .animate-sprite-float {
-  animation: sprite-float 2s ease-in-out infinite;
+  animation: sprite-float 2.5s ease-in-out infinite;
 }
 
 .animate-sprite-glow {
   animation: sprite-glow-pulse 1.5s ease-in-out infinite;
+}
+
+.animate-sprite-walk {
+  animation: sprite-walk 0.4s ease-in-out infinite;
+}
+
+.animate-sprite-idle {
+  animation: sprite-idle-breathe 2s ease-in-out infinite;
+}
+
+.animate-sprite-attack {
+  animation: sprite-attack 0.3s ease-out;
+}
+
+.animate-sprite-hurt {
+  animation: sprite-hurt 0.4s ease-out;
+}
+
+.animate-sprite-spawn {
+  animation: sprite-spawn 0.5s ease-out;
+}
+
+.animate-sprite-shimmer {
+  animation: sprite-shimmer 3s ease-in-out infinite;
+}
+
+.animate-portal-swirl {
+  animation: portal-swirl 4s linear infinite;
+}
+
+.animate-enemy-menace {
+  animation: enemy-menace 1.2s ease-in-out infinite;
+}
+
+.animate-item-sparkle {
+  animation: item-sparkle 2s ease-in-out infinite;
 }

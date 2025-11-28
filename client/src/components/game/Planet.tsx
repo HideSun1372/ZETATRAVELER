@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { useRPG, Enemy } from "../../lib/stores/useRPG";
 import { getPlanetById, PlanetTheme } from "../../lib/data/planets";
 import { generatePlanetAreas, PlanetArea, PlanetLore, LoreNode, getAreaBiomeConfig } from "../../lib/data/planetAreas";
-import { Sprite, getEnemySpriteType } from "./Sprite";
+import { Sprite, EnemySprite, ItemSprite, PlayerSprite, getEnemySpriteType } from "./Sprite";
 import { PauseMenu } from "./PauseMenu";
 
 interface Shard {
@@ -58,13 +58,14 @@ interface LoreObject {
   discovered: boolean;
 }
 
-const TILE_SIZE = 32;
-const MAP_WIDTH = 25;
-const MAP_HEIGHT = 18;
-const PLAYER_SPEED = 4;
-const ENEMY_SPEED = 2.4;
-const ENEMY_DETECTION_RANGE = 6 * TILE_SIZE;
+const TILE_SIZE = 40;
+const MAP_WIDTH = 20;
+const MAP_HEIGHT = 14;
+const PLAYER_SPEED = 5;
+const ENEMY_SPEED = 3;
+const ENEMY_DETECTION_RANGE = 5 * TILE_SIZE;
 const ENEMY_MOVE_INTERVAL = 16;
+const SPRITE_SIZE = 52;
 
 export function Planet() {
   const {
@@ -143,6 +144,7 @@ export function Planet() {
   const [puzzlePhase, setPuzzlePhase] = useState<"showing" | "input" | "success" | "fail">("showing");
   const [puzzleShowIndex, setPuzzleShowIndex] = useState(0);
   const [spottedAlerts, setSpottedAlerts] = useState<{id: string, enemyId: string, timestamp: number}[]>([]);
+  const [lastDirection, setLastDirection] = useState<"left" | "right">("right");
   
   const keysPressed = useRef<Set<string>>(new Set());
   const animationRef = useRef<number>();
@@ -753,8 +755,14 @@ export function Planet() {
 
       if (keysPressed.current.has("w") || keysPressed.current.has("arrowup")) dy -= PLAYER_SPEED;
       if (keysPressed.current.has("s") || keysPressed.current.has("arrowdown")) dy += PLAYER_SPEED;
-      if (keysPressed.current.has("a") || keysPressed.current.has("arrowleft")) dx -= PLAYER_SPEED;
-      if (keysPressed.current.has("d") || keysPressed.current.has("arrowright")) dx += PLAYER_SPEED;
+      if (keysPressed.current.has("a") || keysPressed.current.has("arrowleft")) {
+        dx -= PLAYER_SPEED;
+        setLastDirection("left");
+      }
+      if (keysPressed.current.has("d") || keysPressed.current.has("arrowright")) {
+        dx += PLAYER_SPEED;
+        setLastDirection("right");
+      }
 
       if (dx !== 0 || dy !== 0) {
         const newX = playerPosition.x + dx;
@@ -967,15 +975,15 @@ export function Planet() {
           !shard.collected ? (
             <div
               key={`shard-${shard.id}`}
-              className="absolute animate-sprite-float"
+              className="absolute"
               style={{
-                left: shard.x * TILE_SIZE,
-                top: shard.y * TILE_SIZE,
-                width: TILE_SIZE,
-                height: TILE_SIZE,
+                left: shard.x * TILE_SIZE + (TILE_SIZE - SPRITE_SIZE) / 2,
+                top: shard.y * TILE_SIZE + (TILE_SIZE - SPRITE_SIZE) / 2,
+                width: SPRITE_SIZE,
+                height: SPRITE_SIZE,
               }}
             >
-              <Sprite type="shard" size={TILE_SIZE} glow glowColor="#AA00FF" />
+              <ItemSprite type="shard" size={SPRITE_SIZE} />
             </div>
           ) : null
         )}
@@ -984,15 +992,15 @@ export function Planet() {
           !key.collected ? (
             <div
               key={`key-${key.id}`}
-              className="absolute animate-bounce"
+              className="absolute"
               style={{
-                left: key.x * TILE_SIZE,
-                top: key.y * TILE_SIZE,
-                width: TILE_SIZE,
-                height: TILE_SIZE,
+                left: key.x * TILE_SIZE + (TILE_SIZE - SPRITE_SIZE) / 2,
+                top: key.y * TILE_SIZE + (TILE_SIZE - SPRITE_SIZE) / 2,
+                width: SPRITE_SIZE,
+                height: SPRITE_SIZE,
               }}
             >
-              <Sprite type="key" size={TILE_SIZE} glow glowColor="#FFD700" />
+              <ItemSprite type="key" size={SPRITE_SIZE} />
             </div>
           ) : null
         )}
@@ -1059,31 +1067,33 @@ export function Planet() {
           </div>
         ))}
 
-        {!isGamePaused && enemies.map((enemy) => {
+        {!isGamePaused && enemies.map((enemy, enemyIndex) => {
           const isDefeated = defeatedEnemyIds.includes(enemy.id);
           const isBossEnemy = enemy.isBoss || enemy.isSecretBoss;
           const isChasing = enemy.isChasing && !isBossEnemy;
-          const spriteSize = isBossEnemy ? TILE_SIZE * 2 : TILE_SIZE;
+          const enemySpriteSize = isBossEnemy ? SPRITE_SIZE * 1.8 : SPRITE_SIZE;
           return !isDefeated ? (
             <div
               key={enemy.id}
-              className={`absolute flex items-center justify-center transition-all duration-75 ${isBossEnemy ? 'animate-pulse' : ''}`}
+              className="absolute flex items-center justify-center transition-all duration-75"
               style={{
-                left: enemy.x * TILE_SIZE - (isBossEnemy ? TILE_SIZE/2 : 0),
-                top: enemy.y * TILE_SIZE - (isBossEnemy ? TILE_SIZE/2 : 0),
-                width: spriteSize,
-                height: spriteSize,
+                left: enemy.x * TILE_SIZE - (isBossEnemy ? TILE_SIZE/2 : 0) + (TILE_SIZE - enemySpriteSize) / 2,
+                top: enemy.y * TILE_SIZE - (isBossEnemy ? TILE_SIZE/2 : 0) + (TILE_SIZE - enemySpriteSize) / 2,
+                width: enemySpriteSize,
+                height: enemySpriteSize,
                 zIndex: isBossEnemy ? 10 : 1,
               }}
             >
-              <Sprite 
-                type={isBossEnemy ? "boss" : getEnemySpriteType(enemy.name)} 
-                size={spriteSize}
-                glow={isChasing || isBossEnemy}
-                glowColor={isChasing ? "#FF0000" : isBossEnemy ? "#FFD700" : enemy.color || "#FF0000"}
+              <EnemySprite 
+                enemyName={enemy.name}
+                planetId={currentPlanetId}
+                enemyIndex={enemyIndex}
+                size={enemySpriteSize}
+                isBoss={isBossEnemy}
+                animation={isChasing ? "attack" : isBossEnemy ? "menace" : "idle"}
               />
               {isChasing && (
-                <div className="absolute -top-2 left-1/2 -translate-x-1/2 text-yellow-400 font-bold text-lg animate-bounce">!</div>
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-yellow-400 font-bold text-xl animate-bounce">!</div>
               )}
             </div>
           ) : null;
@@ -1131,14 +1141,19 @@ export function Planet() {
         <div
           className="absolute"
           style={{
-            left: playerPosition.x,
-            top: playerPosition.y,
-            width: TILE_SIZE,
-            height: TILE_SIZE,
+            left: playerPosition.x + (TILE_SIZE - SPRITE_SIZE) / 2,
+            top: playerPosition.y + (TILE_SIZE - SPRITE_SIZE) / 2,
+            width: SPRITE_SIZE,
+            height: SPRITE_SIZE,
             transition: "left 0.05s, top 0.05s",
+            zIndex: Math.floor(playerPosition.y / TILE_SIZE) + 5,
           }}
         >
-          <Sprite type="player" size={TILE_SIZE} />
+          <PlayerSprite 
+            size={SPRITE_SIZE} 
+            isMoving={keysPressed.current.size > 0}
+            flipX={lastDirection === "left"}
+          />
         </div>
 
         {!isGamePaused && allEnemiesDefeated && !planetSealed && (
