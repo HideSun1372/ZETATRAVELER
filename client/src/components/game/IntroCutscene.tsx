@@ -118,13 +118,20 @@ export function IntroCutscene({ playerName, onComplete }: IntroCutsceneProps) {
     }
   }, [displayedText, currentStep, isTyping]);
 
-  const skipTyping = () => {
-    if (!currentStep) return;
-    if (currentStep.type !== "dialogue" && currentStep.type !== "narration") return;
-    if (isTyping) {
-      setDisplayedText(currentStep.text);
+  const skipAndAdvance = () => {
+    const step = steps[stepIndex];
+    if (!step) return;
+    
+    // If it's a dialogue/narration step, show full text instantly then advance
+    if (step.type === "dialogue" || step.type === "narration") {
+      setDisplayedText(step.text);
       setIsTyping(false);
-      setTimeout(() => setCanProceed(true), 50);
+      setCanProceed(true);
+    }
+    
+    // Advance to next step
+    if (stepIndex < steps.length - 1) {
+      setStepIndex(stepIndex + 1);
     }
   };
 
@@ -132,7 +139,11 @@ export function IntroCutscene({ playerName, onComplete }: IntroCutsceneProps) {
     const handleKeyDown = (e: KeyboardEvent) => {
       // X key: Skip typing animation and show full text
       if (e.key === "x" || e.key === "X") {
-        skipTyping();
+        if (currentStep && (currentStep.type === "dialogue" || currentStep.type === "narration") && isTyping) {
+          setDisplayedText(currentStep.text);
+          setIsTyping(false);
+          setTimeout(() => setCanProceed(true), 50);
+        }
         return;
       }
 
@@ -140,20 +151,25 @@ export function IntroCutscene({ playerName, onComplete }: IntroCutsceneProps) {
       if ((e.key === "c" || e.key === "C") && !cHeldRef.current) {
         cHeldRef.current = true;
         
-        // Instantly advance to next step
-        if (stepIndex < steps.length - 1) {
-          setStepIndex(stepIndex + 1);
-        }
+        // Immediately show and advance
+        skipAndAdvance();
         
         // Set up interval for continuous skipping while held
         cIntervalRef.current = setInterval(() => {
+          const currentIdx = stepIndex;
+          const step = steps[currentIdx];
+          if (step && (step.type === "dialogue" || step.type === "narration")) {
+            setDisplayedText(step.text);
+            setIsTyping(false);
+            setCanProceed(true);
+          }
           setStepIndex(prev => {
             if (prev < steps.length - 1) {
               return prev + 1;
             }
             return prev;
           });
-        }, 120);
+        }, 100);
         return;
       }
 
@@ -184,7 +200,7 @@ export function IntroCutscene({ playerName, onComplete }: IntroCutsceneProps) {
         clearInterval(cIntervalRef.current);
       }
     };
-  }, [canProceed, stepIndex, steps.length, isTyping, currentStep]);
+  }, [canProceed, stepIndex, steps.length, isTyping, currentStep, steps]);
 
   const renderDialogue = () => {
     if (!currentStep) return null;
