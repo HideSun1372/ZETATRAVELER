@@ -3,6 +3,7 @@ import { useRPG, Enemy } from "../../lib/stores/useRPG";
 import { getPlanetById, PlanetTheme } from "../../lib/data/planets";
 import { generatePlanetAreas, PlanetArea, PlanetLore, LoreNode, getAreaBiomeConfig } from "../../lib/data/planetAreas";
 import { Sprite, getEnemySpriteType } from "./Sprite";
+import { PauseMenu } from "./PauseMenu";
 
 interface Shard {
   id: number;
@@ -109,6 +110,7 @@ export function Planet() {
   const [loreObjects, setLoreObjects] = useState<LoreObject[]>([]);
   const [showExitPrompt, setShowExitPrompt] = useState(false);
   const [showSealPrompt, setShowSealPrompt] = useState(false);
+  const [showPauseMenu, setShowPauseMenu] = useState(false);
   const [showDoorPrompt, setShowDoorPrompt] = useState<Door | null>(null);
   const [showLoreDialog, setShowLoreDialog] = useState<LoreObject | null>(null);
   const [showAreaTransition, setShowAreaTransition] = useState(false);
@@ -651,6 +653,23 @@ export function Planet() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (showVictory) return;
       
+      if (e.key === "Escape") {
+        if (showLoreDialog) {
+          setShowLoreDialog(null);
+        } else if (showDoorPrompt) {
+          setShowDoorPrompt(null);
+        } else if (showExitPrompt) {
+          setShowExitPrompt(false);
+        } else if (showSealPrompt) {
+          setShowSealPrompt(false);
+        } else if (!puzzleActive) {
+          setShowPauseMenu(prev => !prev);
+        }
+        return;
+      }
+      
+      if (showPauseMenu) return;
+      
       if (puzzleActive && puzzlePhase === "input") {
         if (e.key === "ArrowUp" || e.key === "w" || e.key === "W") {
           handlePuzzleInput("up");
@@ -720,11 +739,11 @@ export function Planet() {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [showExitPrompt, showSealPrompt, showVictory, puzzleActive, puzzlePhase, playerInput, puzzleSequence, showDoorPrompt, showLoreDialog, changeArea]);
+  }, [showExitPrompt, showSealPrompt, showVictory, puzzleActive, puzzlePhase, playerInput, puzzleSequence, showDoorPrompt, showLoreDialog, changeArea, showPauseMenu]);
 
   useEffect(() => {
     const gameLoop = () => {
-      if (showExitPrompt || showDoorPrompt || showLoreDialog || showAreaTransition) {
+      if (showExitPrompt || showDoorPrompt || showLoreDialog || showAreaTransition || showPauseMenu) {
         animationRef.current = requestAnimationFrame(gameLoop);
         return;
       }
@@ -1542,9 +1561,17 @@ export function Planet() {
             ? "The BOSS has appeared! Defeat it to unlock the core!"
             : regularEnemiesDefeated && allKeysCollected
               ? "All enemies cleared and keys collected! The BOSS approaches..."
-              : `Collect ${keys.length} keys | Defeat ${enemies.filter(e => !e.isBoss).length} enemies | Find the boss`
+              : `Collect ${keys.length} keys | Defeat ${enemies.filter(e => !e.isBoss).length} enemies | ESC: Pause`
         }
       </div>
+
+      {showPauseMenu && (
+        <PauseMenu 
+          onClose={() => setShowPauseMenu(false)} 
+          onReturnToHub={returnToHub}
+          showReturnToHub={true}
+        />
+      )}
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useMemo } from "react";
 import { useRPG } from "../../lib/stores/useRPG";
 import { GalaxyMap } from "./GalaxyMap";
 import { Sprite, getNPCSpriteType } from "./Sprite";
+import { PauseMenu } from "./PauseMenu";
 
 interface NPC {
   id: string;
@@ -51,9 +52,27 @@ export function Hub() {
   const [displayedText, setDisplayedText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [showGalaxyMap, setShowGalaxyMap] = useState(false);
+  const [showPauseMenu, setShowPauseMenu] = useState(false);
   
   const keysPressed = useRef<Set<string>>(new Set());
   const animationRef = useRef<number>();
+
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (showGalaxyMap) {
+          setShowGalaxyMap(false);
+        } else if (showDialogue) {
+          setShowDialogue(false);
+        } else {
+          setShowPauseMenu(prev => !prev);
+        }
+      }
+    };
+    
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [showGalaxyMap, showDialogue]);
 
   const npcs: NPC[] = useMemo(() => [
     {
@@ -450,7 +469,7 @@ export function Hub() {
         className="mt-2 text-gray-500 text-sm"
         style={{ fontFamily: "'Courier New', monospace" }}
       >
-        WASD/Arrows: Move | Z/Enter: Interact | Approach portals to travel
+        WASD/Arrows: Move | Z/Enter: Interact | ESC: Pause/Save
       </div>
       
       <div 
@@ -472,6 +491,10 @@ export function Hub() {
           onClose={() => setShowGalaxyMap(false)}
           onSelectPlanet={handlePlanetSelect}
         />
+      )}
+
+      {showPauseMenu && (
+        <PauseMenu onClose={() => setShowPauseMenu(false)} />
       )}
     </div>
   );
