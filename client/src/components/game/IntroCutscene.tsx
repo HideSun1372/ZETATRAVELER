@@ -128,15 +128,6 @@ export function IntroCutscene({ playerName, onComplete }: IntroCutsceneProps) {
     }
   };
 
-  const advanceDialogue = () => {
-    setStepIndex(prev => {
-      if (prev < steps.length - 1) {
-        return prev + 1;
-      }
-      return prev;
-    });
-  };
-
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // X key: Skip typing animation and show full text
@@ -145,15 +136,13 @@ export function IntroCutscene({ playerName, onComplete }: IntroCutsceneProps) {
         return;
       }
 
-      // C key: Start holding to mash through dialogue
+      // C key: Instantly show dialogue and skip to next
       if ((e.key === "c" || e.key === "C") && !cHeldRef.current) {
         cHeldRef.current = true;
         
-        // Immediate action
-        if (isTyping) {
-          skipTyping();
-        } else if (canProceed && stepIndex < steps.length - 1) {
-          advanceDialogue();
+        // Instantly advance to next step
+        if (stepIndex < steps.length - 1) {
+          setStepIndex(stepIndex + 1);
         }
         
         // Set up interval for continuous skipping while held
@@ -164,7 +153,7 @@ export function IntroCutscene({ playerName, onComplete }: IntroCutsceneProps) {
             }
             return prev;
           });
-        }, 150);
+        }, 120);
         return;
       }
 
