@@ -47,8 +47,8 @@ export function VesselCreator({ onComplete }: VesselCreatorProps) {
   const [feeling, setFeeling] = useState("");
 
   const steps: Step[] = [
-    { type: "dialogue", text: "HELLO?" },
-    { type: "dialogue", text: "IS THE LINK STABLE?" },
+    { type: "dialogue", text: "ARE YOU THERE?" },
+    { type: "dialogue", text: "ARE WE CONNECTED?" },
     { type: "dialogue", text: "GOOD. LET US PROCEED." },
     { type: "dialogue", text: "A TRAVELER REQUIRES A FORM." },
     { type: "choice", text: "CHOOSE A BODY.", options: bodyOptions },
