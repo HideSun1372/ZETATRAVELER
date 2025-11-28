@@ -74,7 +74,7 @@ export function VesselCreator({ onComplete }: VesselCreatorProps) {
 
   const currentStep = steps[stepIndex];
   const currentText = currentStep.type === "summary" 
-    ? `FORM: ${body}\nNATURE: ${head}\nNAME: ${name}\n\nIS THIS CORRECT?`
+    ? `BODY: ${body}\nSPIRIT: ${head}\nNAME: ${name}\n\nIS THIS CORRECT?`
     : currentStep.text;
 
   useEffect(() => {
