@@ -65,7 +65,7 @@ const PLAYER_SPEED = 5;
 const ENEMY_SPEED = 3;
 const ENEMY_DETECTION_RANGE = 5 * TILE_SIZE;
 const ENEMY_MOVE_INTERVAL = 16;
-const SPRITE_SIZE = 52;
+const SPRITE_SIZE = TILE_SIZE;
 
 export function Planet() {
   const {
@@ -145,6 +145,7 @@ export function Planet() {
   const [puzzleShowIndex, setPuzzleShowIndex] = useState(0);
   const [spottedAlerts, setSpottedAlerts] = useState<{id: string, enemyId: string, timestamp: number}[]>([]);
   const [lastDirection, setLastDirection] = useState<"left" | "right">("right");
+  const [isPlayerMoving, setIsPlayerMoving] = useState(false);
   
   const keysPressed = useRef<Set<string>>(new Set());
   const animationRef = useRef<number>();
@@ -153,29 +154,54 @@ export function Planet() {
   
   const CORE_POSITION = { x: Math.floor(MAP_WIDTH / 2), y: Math.floor(MAP_HEIGHT / 2) };
   
+  const isInCoreRoom = currentArea?.isCoreRoom === true;
+  const coreRoomEnemiesDefeated = isInCoreRoom && (enemies.length === 0 || enemies.every(e => defeatedEnemyIds.includes(e.id)));
   const allEnemiesDefeated = enemies.length > 0 && enemies.every(e => defeatedEnemyIds.includes(e.id));
   const allShardsCollected = shards.length > 0 && shards.every(s => s.collected);
 
   const walls = useMemo(() => {
-    const w: { x: number; y: number }[] = [];
+    const w: { x: number; y: number; isCorner?: boolean }[] = [];
     for (let x = 0; x < MAP_WIDTH; x++) {
-      w.push({ x, y: 0 });
-      w.push({ x, y: MAP_HEIGHT - 1 });
+      w.push({ x, y: 0, isCorner: x === 0 || x === MAP_WIDTH - 1 });
+      w.push({ x, y: MAP_HEIGHT - 1, isCorner: x === 0 || x === MAP_WIDTH - 1 });
     }
-    for (let y = 0; y < MAP_HEIGHT; y++) {
-      w.push({ x: 0, y });
-      w.push({ x: MAP_WIDTH - 1, y });
+    for (let y = 1; y < MAP_HEIGHT - 1; y++) {
+      w.push({ x: 0, y, isCorner: false });
+      w.push({ x: MAP_WIDTH - 1, y, isCorner: false });
     }
-    w.push({ x: 12, y: 5 });
-    w.push({ x: 13, y: 5 });
-    w.push({ x: 12, y: 6 });
-    w.push({ x: 8, y: 10 });
-    w.push({ x: 9, y: 10 });
-    w.push({ x: 16, y: 12 });
-    w.push({ x: 17, y: 12 });
-    
     return w;
   }, []);
+
+  const floorPattern = useMemo(() => {
+    const pattern: { x: number; y: number; variant: number }[] = [];
+    const seed = currentPlanetId * 1000 + parseInt(currentAreaId.split('-').pop() || '0');
+    for (let y = 1; y < MAP_HEIGHT - 1; y++) {
+      for (let x = 1; x < MAP_WIDTH - 1; x++) {
+        const variant = ((x + y + seed) % 4);
+        pattern.push({ x, y, variant });
+      }
+    }
+    return pattern;
+  }, [currentPlanetId, currentAreaId]);
+
+  const decorations = useMemo(() => {
+    if (!areaBiome) return [];
+    const decs: { x: number; y: number; type: string }[] = [];
+    const seed = currentPlanetId * 500 + parseInt(currentAreaId.split('-').pop() || '0');
+    const random = (n: number) => {
+      const x = Math.sin(seed + n) * 10000;
+      return x - Math.floor(x);
+    };
+
+    const numDecorations = 4 + Math.floor(random(0) * 4);
+    for (let i = 0; i < numDecorations; i++) {
+      const x = 2 + Math.floor(random(i * 2) * (MAP_WIDTH - 4));
+      const y = 2 + Math.floor(random(i * 2 + 1) * (MAP_HEIGHT - 4));
+      const types = ["rock", "plant", "crystal", "pillar"];
+      decs.push({ x, y, type: types[Math.floor(random(i * 3) * types.length)] });
+    }
+    return decs;
+  }, [currentPlanetId, currentAreaId, areaBiome]);
 
   useEffect(() => {
     if (!currentArea || !planetTheme) return;
@@ -398,8 +424,8 @@ export function Planet() {
       setShowExitPrompt(true);
     }
     
-    if (canSealCore() && !planetSealed &&
-        Math.abs(tileX - CORE_POSITION.x) < 1 && Math.abs(tileY - CORE_POSITION.y) < 1) {
+    if (isInCoreRoom && coreRoomEnemiesDefeated && !planetSealed &&
+        Math.abs(tileX - CORE_POSITION.x) < 2 && Math.abs(tileY - CORE_POSITION.y) < 2) {
       setShowSealPrompt(true);
     }
   };
@@ -764,7 +790,10 @@ export function Planet() {
         setLastDirection("right");
       }
 
-      if (dx !== 0 || dy !== 0) {
+      const wasMoving = dx !== 0 || dy !== 0;
+      setIsPlayerMoving(wasMoving);
+
+      if (wasMoving) {
         const newX = playerPosition.x + dx;
         const newY = playerPosition.y + dy;
 
@@ -936,14 +965,36 @@ export function Planet() {
       </div>
 
       <div
-        className="relative border-4 flex-shrink-0"
+        className="relative border-4 flex-shrink-0 overflow-hidden"
         style={{
           width: MAP_WIDTH * TILE_SIZE,
           height: MAP_HEIGHT * TILE_SIZE,
           backgroundColor: getPlanetColor(),
           borderColor: planetTheme?.primaryColor || "#FFFFFF",
+          boxShadow: `inset 0 0 60px ${areaBiome?.ambientLight || "rgba(0,0,0,0.3)"}`,
         }}
       >
+        {floorPattern.map((tile) => {
+          const baseColor = areaBiome?.groundColor || getPlanetColor();
+          const brightness = 0.85 + (tile.variant * 0.05);
+          return (
+            <div
+              key={`floor-${tile.x}-${tile.y}`}
+              className="absolute"
+              style={{
+                left: tile.x * TILE_SIZE,
+                top: tile.y * TILE_SIZE,
+                width: TILE_SIZE,
+                height: TILE_SIZE,
+                backgroundColor: baseColor,
+                filter: `brightness(${brightness})`,
+                borderRight: tile.variant % 2 === 0 ? `1px solid ${areaBiome?.accentColor || "#333"}22` : "none",
+                borderBottom: tile.variant % 2 === 1 ? `1px solid ${areaBiome?.accentColor || "#333"}22` : "none",
+              }}
+            />
+          );
+        })}
+
         {walls.map((wall, i) => (
           <div
             key={`wall-${i}`}
@@ -953,23 +1004,80 @@ export function Planet() {
               top: wall.y * TILE_SIZE,
               width: TILE_SIZE,
               height: TILE_SIZE,
-              backgroundColor: getWallColor(),
-              border: `1px solid ${planetTheme?.primaryColor || "#444"}`,
+              background: wall.isCorner 
+                ? `linear-gradient(135deg, ${getWallColor()} 0%, ${planetTheme?.primaryColor || "#555"} 100%)`
+                : wall.y === 0 
+                  ? `linear-gradient(to bottom, ${planetTheme?.primaryColor || "#666"} 0%, ${getWallColor()} 100%)`
+                  : wall.y === MAP_HEIGHT - 1
+                    ? `linear-gradient(to top, ${getWallColor()} 0%, ${planetTheme?.primaryColor || "#555"} 100%)`
+                    : `linear-gradient(to right, ${getWallColor()} 0%, ${planetTheme?.primaryColor || "#555"} 50%, ${getWallColor()} 100%)`,
+              borderTop: wall.y === 0 ? `2px solid ${planetTheme?.primaryColor || "#888"}` : "none",
+              borderBottom: wall.y === MAP_HEIGHT - 1 ? `2px solid ${getWallColor()}` : "none",
+              borderLeft: wall.x === 0 ? `2px solid ${planetTheme?.primaryColor || "#888"}` : "none",
+              borderRight: wall.x === MAP_WIDTH - 1 ? `2px solid ${getWallColor()}` : "none",
             }}
           />
         ))}
 
-        <div
-          className="absolute"
-          style={{
-            left: 0,
-            top: (MAP_HEIGHT / 2 - 1) * TILE_SIZE,
-            width: TILE_SIZE,
-            height: TILE_SIZE * 2,
-            backgroundColor: "#4444FF",
-            opacity: 0.7,
-          }}
-        />
+        {decorations.map((dec, i) => (
+          <div
+            key={`dec-${i}`}
+            className="absolute flex items-center justify-center pointer-events-none"
+            style={{
+              left: dec.x * TILE_SIZE,
+              top: dec.y * TILE_SIZE,
+              width: TILE_SIZE,
+              height: TILE_SIZE,
+              opacity: 0.6,
+              zIndex: 1,
+            }}
+          >
+            {dec.type === "rock" && (
+              <div 
+                className="rounded-full"
+                style={{ 
+                  width: TILE_SIZE * 0.5, 
+                  height: TILE_SIZE * 0.4,
+                  backgroundColor: getWallColor(),
+                  boxShadow: `0 2px 4px rgba(0,0,0,0.3)`,
+                }}
+              />
+            )}
+            {dec.type === "plant" && (
+              <div 
+                className="animate-sprite-idle"
+                style={{ 
+                  fontSize: TILE_SIZE * 0.5,
+                  color: areaBiome?.accentColor || "#228B22",
+                }}
+              >
+                🌿
+              </div>
+            )}
+            {dec.type === "crystal" && (
+              <div 
+                className="animate-pulse"
+                style={{ 
+                  width: TILE_SIZE * 0.3, 
+                  height: TILE_SIZE * 0.5,
+                  backgroundColor: planetTheme?.primaryColor || "#9b59b6",
+                  clipPath: "polygon(50% 0%, 100% 100%, 0% 100%)",
+                  boxShadow: `0 0 8px ${planetTheme?.primaryColor || "#9b59b6"}`,
+                }}
+              />
+            )}
+            {dec.type === "pillar" && (
+              <div 
+                style={{ 
+                  width: TILE_SIZE * 0.3, 
+                  height: TILE_SIZE * 0.8,
+                  backgroundColor: getWallColor(),
+                  borderRadius: "4px 4px 0 0",
+                }}
+              />
+            )}
+          </div>
+        ))}
 
         {!isGamePaused && shards.map((shard) =>
           !shard.collected ? (
@@ -1151,24 +1259,33 @@ export function Planet() {
         >
           <PlayerSprite 
             size={SPRITE_SIZE} 
-            isMoving={keysPressed.current.size > 0}
+            isMoving={isPlayerMoving}
             flipX={lastDirection === "left"}
           />
         </div>
 
-        {!isGamePaused && allEnemiesDefeated && !planetSealed && (
+        {!isGamePaused && isInCoreRoom && coreRoomEnemiesDefeated && !planetSealed && (
           <div
-            className="absolute animate-pulse"
+            className="absolute animate-pulse cursor-pointer"
             style={{
               left: CORE_POSITION.x * TILE_SIZE,
               top: CORE_POSITION.y * TILE_SIZE,
-              width: TILE_SIZE,
-              height: TILE_SIZE,
-              backgroundColor: "#FFD700",
+              width: TILE_SIZE * 2,
+              height: TILE_SIZE * 2,
+              background: "radial-gradient(circle, #FFD700 0%, #FF8C00 50%, #FF4500 100%)",
               borderRadius: "50%",
-              boxShadow: "0 0 20px #FFD700, 0 0 40px #FF8C00",
+              boxShadow: "0 0 30px #FFD700, 0 0 60px #FF8C00, 0 0 90px #FF4500",
+              zIndex: 50,
             }}
-          />
+            onClick={() => setShowSealPrompt(true)}
+          >
+            <div 
+              className="absolute inset-0 flex items-center justify-center text-black font-bold text-xs"
+              style={{ fontFamily: "'Courier New', monospace" }}
+            >
+              CORE
+            </div>
+          </div>
         )}
 
         {showExitPrompt && (

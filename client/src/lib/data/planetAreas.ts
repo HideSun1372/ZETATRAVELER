@@ -716,7 +716,8 @@ export function generatePlanetAreas(
       enemyCount = Math.min(remainingEnemies, enemiesPerCombatRoom + Math.floor(rand() * 2));
       remainingEnemies -= enemyCount;
     } else if (node.archetype === "boss_lair") {
-      enemyCount = 0;
+      enemyCount = Math.min(remainingEnemies, 3 + Math.floor(difficulty / 2));
+      remainingEnemies -= enemyCount;
     }
     
     let shardCount = 0;
