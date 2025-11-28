@@ -45,9 +45,9 @@ Preferred communication style: Simple, everyday language.
 - Difficulty scaling from 1-5 stars across regions
 - 150 unique enemy types total with spare dialogue
 
-**Multi-Room Planet System** (NEW):
+**Multi-Room Planet System**:
 - Each planet now contains 3-6 interconnected areas based on difficulty
-- Biome catalog (`client/src/lib/data/biomes.ts`) with 10 visual themes: forest, cave, ruins, crystalline, desert, ice, volcanic, void, tech, garden
+- Biome catalog (`client/src/lib/data/biomes.ts`) with 12 visual themes: forest, cave, ruins, crystalline, desert, ice, volcanic, void, tech, garden, marsh, celestial
 - Area generation system (`client/src/lib/data/planetAreas.ts`) creates procedural layouts with unique content per room
 - Room connections via doors, portals, and gates with directional arrows (north, south, east, west)
 - Content distribution: enemies, shards, keys spread across rooms; boss spawns only in final "boss lair" area
@@ -55,6 +55,26 @@ Preferred communication style: Simple, everyday language.
 - Each planet has a thematic story arc revealed through lore pieces across areas
 - Store tracks: current area ID, visited areas, enemies defeated per area, collected items, discovered lore
 - UI shows current area name, description, and area progress (e.g., "Area 2/4")
+
+**Sprite System** (NEW):
+- Canvas-based white background removal using `useProcessedSprite` hook in `Sprite.tsx`
+- Frame-based animation system with `useSpriteAnimator` hook supporting idle, walk, menace, attack, shimmer states
+- Animations provide scale, offsetY, and rotation effects for natural movement
+- Sprite processing cached via `processedSpriteCache` for performance
+
+**Enemy Appearance System** (NEW):
+- `generateEnemyAppearance` function creates 150 unique enemy visuals
+- Region-based color palettes via `BIOME_HUE_RANGES` (Verdant, Frozen, Inferno, Void, Celestial)
+- Each enemy has unique: baseType, hueRotate, saturation, brightness, glowColor, bodyShape, eyeStyle, accessoryType, auraColor
+- EnemySprite renders accessories (horns, crystals) and aura effects based on appearance
+
+**Biome Visual System** (NEW):
+- Extended BiomeConfig with: groundColorAlt, wallColorAlt, fogColor, fogOpacity, particleType
+- Floor patterns: solid, checkered, hexagonal, cracked, organic, circuits, crystalline
+- Wall styles: solid, rough, smooth, jagged, glowing, translucent
+- Emoji-based decorations with probability, animated, and glow properties
+- Fog overlay for atmospheric effects based on biome settings
+- Helper functions: `getFloorPatternStyle`, `getWallStyleGradient`
 
 ### Backend Architecture
 
