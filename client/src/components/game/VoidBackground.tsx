@@ -18,6 +18,11 @@ export function VoidBackground({ opacity }: VoidBackgroundProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>(0);
   const timeRef = useRef(0);
+  const opacityRef = useRef(opacity);
+
+  useEffect(() => {
+    opacityRef.current = opacity;
+  }, [opacity]);
 
   const particles = useMemo(() => {
     const particleCount = 75;
@@ -26,10 +31,10 @@ export function VoidBackground({ opacity }: VoidBackgroundProps) {
       result.push({
         x: Math.random() * 100,
         y: Math.random() * 100,
-        size: Math.random() * 3 + 1,
-        opacity: Math.random() * 0.6 + 0.1,
-        speedX: (Math.random() - 0.5) * 0.02,
-        speedY: (Math.random() - 0.5) * 0.015,
+        size: Math.random() * 4 + 1.5,
+        opacity: Math.random() * 0.7 + 0.3,
+        speedX: (Math.random() - 0.5) * 0.03,
+        speedY: (Math.random() - 0.5) * 0.02,
         parallaxLayer: Math.floor(Math.random() * 3),
       });
     }
@@ -54,13 +59,13 @@ export function VoidBackground({ opacity }: VoidBackgroundProps) {
       timeRef.current += 0.016;
       const time = timeRef.current;
 
-      ctx.fillStyle = "#000000";
+      ctx.fillStyle = "#050208";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       const centerX = canvas.width / 2;
       const centerY = canvas.height / 2;
-      const pulseIntensity = 0.3 + Math.sin(time * 0.5) * 0.15;
-      const maxRadius = Math.max(canvas.width, canvas.height) * 0.6;
+      const pulseIntensity = 0.5 + Math.sin(time * 0.5) * 0.25;
+      const maxRadius = Math.max(canvas.width, canvas.height) * 0.7;
 
       const gradient = ctx.createRadialGradient(
         centerX,
@@ -70,10 +75,11 @@ export function VoidBackground({ opacity }: VoidBackgroundProps) {
         centerY,
         maxRadius
       );
-      gradient.addColorStop(0, `rgba(40, 30, 60, ${pulseIntensity * opacity})`);
-      gradient.addColorStop(0.3, `rgba(20, 15, 35, ${pulseIntensity * 0.6 * opacity})`);
-      gradient.addColorStop(0.6, `rgba(10, 8, 20, ${pulseIntensity * 0.3 * opacity})`);
-      gradient.addColorStop(1, "rgba(0, 0, 0, 0)");
+      gradient.addColorStop(0, `rgba(60, 40, 90, ${pulseIntensity})`);
+      gradient.addColorStop(0.2, `rgba(40, 25, 70, ${pulseIntensity * 0.7})`);
+      gradient.addColorStop(0.4, `rgba(25, 15, 50, ${pulseIntensity * 0.4})`);
+      gradient.addColorStop(0.7, `rgba(10, 5, 25, ${pulseIntensity * 0.2})`);
+      gradient.addColorStop(1, "rgba(5, 2, 8, 0)");
 
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -92,33 +98,31 @@ export function VoidBackground({ opacity }: VoidBackgroundProps) {
         const py = (particle.y / 100) * canvas.height;
 
         const flickerOpacity =
-          particle.opacity * (0.7 + Math.sin(time * 2 + particle.x) * 0.3);
-        const layerOpacity = 1 - particle.parallaxLayer * 0.2;
+          particle.opacity * (0.6 + Math.sin(time * 2 + particle.x * 0.5) * 0.4);
+        const layerOpacity = 1 - particle.parallaxLayer * 0.15;
 
-        ctx.beginPath();
-        ctx.arc(px, py, particle.size, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(200, 180, 255, ${flickerOpacity * layerOpacity * opacity})`;
-        ctx.fill();
-
-        if (particle.size > 2) {
+        if (particle.size > 2.5) {
           const glowGradient = ctx.createRadialGradient(
             px,
             py,
             0,
             px,
             py,
-            particle.size * 3
+            particle.size * 4
           );
-          glowGradient.addColorStop(
-            0,
-            `rgba(180, 160, 220, ${flickerOpacity * 0.3 * layerOpacity * opacity})`
-          );
-          glowGradient.addColorStop(1, "rgba(180, 160, 220, 0)");
+          glowGradient.addColorStop(0, `rgba(220, 200, 255, ${flickerOpacity * 0.5 * layerOpacity})`);
+          glowGradient.addColorStop(0.5, `rgba(180, 150, 230, ${flickerOpacity * 0.2 * layerOpacity})`);
+          glowGradient.addColorStop(1, "rgba(150, 120, 200, 0)");
           ctx.fillStyle = glowGradient;
           ctx.beginPath();
-          ctx.arc(px, py, particle.size * 3, 0, Math.PI * 2);
+          ctx.arc(px, py, particle.size * 4, 0, Math.PI * 2);
           ctx.fill();
         }
+
+        ctx.beginPath();
+        ctx.arc(px, py, particle.size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(240, 230, 255, ${flickerOpacity * layerOpacity})`;
+        ctx.fill();
       }
 
       animationRef.current = requestAnimationFrame(animate);
@@ -130,20 +134,20 @@ export function VoidBackground({ opacity }: VoidBackgroundProps) {
       window.removeEventListener("resize", resize);
       cancelAnimationFrame(animationRef.current);
     };
-  }, [particles, opacity]);
+  }, [particles]);
 
   const fogLayers = useMemo(() => {
     return [
-      { delay: "0s", duration: "20s", opacity: 0.15 },
-      { delay: "-7s", duration: "25s", opacity: 0.12 },
-      { delay: "-14s", duration: "22s", opacity: 0.1 },
+      { delay: "0s", duration: "20s", opacity: 0.25 },
+      { delay: "-7s", duration: "25s", opacity: 0.2 },
+      { delay: "-14s", duration: "22s", opacity: 0.15 },
     ];
   }, []);
 
   return (
     <div
       className="absolute inset-0 overflow-hidden"
-      style={{ opacity, transition: "opacity 0.8s ease-out" }}
+      style={{ opacity, transition: "opacity 1s ease-out" }}
     >
       <canvas
         ref={canvasRef}
@@ -153,15 +157,16 @@ export function VoidBackground({ opacity }: VoidBackgroundProps) {
       {fogLayers.map((layer, index) => (
         <div
           key={index}
-          className="absolute inset-0 pointer-events-none"
+          className="absolute pointer-events-none"
           style={{
-            background: `radial-gradient(ellipse 150% 100% at 50% 50%, 
-              rgba(30, 20, 50, ${layer.opacity}) 0%, 
-              rgba(15, 10, 30, ${layer.opacity * 0.5}) 40%, 
-              transparent 70%)`,
+            inset: "-20%",
+            background: `radial-gradient(ellipse 120% 80% at 50% 50%, 
+              rgba(50, 30, 80, ${layer.opacity}) 0%, 
+              rgba(30, 20, 60, ${layer.opacity * 0.6}) 30%, 
+              transparent 60%)`,
             animation: `fogDrift${index} ${layer.duration} ease-in-out infinite`,
             animationDelay: layer.delay,
-            filter: "blur(40px)",
+            filter: "blur(50px)",
           }}
         />
       ))}
@@ -170,9 +175,9 @@ export function VoidBackground({ opacity }: VoidBackgroundProps) {
         className="absolute inset-0 pointer-events-none"
         style={{
           background: `radial-gradient(circle at 50% 45%, 
-            rgba(80, 60, 120, 0.2) 0%, 
-            rgba(50, 35, 80, 0.15) 15%, 
-            rgba(30, 20, 50, 0.1) 30%, 
+            rgba(100, 70, 150, 0.3) 0%, 
+            rgba(70, 45, 110, 0.2) 15%, 
+            rgba(40, 25, 70, 0.1) 30%, 
             transparent 50%)`,
           animation: "breathe 4s ease-in-out infinite",
         }}
@@ -182,36 +187,36 @@ export function VoidBackground({ opacity }: VoidBackgroundProps) {
         className="absolute inset-0 pointer-events-none"
         style={{
           background: `radial-gradient(ellipse 100% 100% at 50% 50%, 
-            transparent 30%, 
-            rgba(0, 0, 0, 0.4) 60%, 
-            rgba(0, 0, 0, 0.8) 80%, 
-            rgba(0, 0, 0, 1) 100%)`,
+            transparent 20%, 
+            rgba(0, 0, 0, 0.3) 50%, 
+            rgba(0, 0, 0, 0.7) 75%, 
+            rgba(0, 0, 0, 0.95) 100%)`,
         }}
       />
 
-      <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-30">
+      <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ opacity: 0.4 }}>
         <defs>
           <filter id="turbulence">
             <feTurbulence
               type="fractalNoise"
-              baseFrequency="0.01"
-              numOctaves="3"
+              baseFrequency="0.008"
+              numOctaves="4"
               seed="5"
             >
               <animate
                 attributeName="baseFrequency"
-                dur="30s"
-                values="0.01;0.015;0.01"
+                dur="40s"
+                values="0.008;0.012;0.008"
                 repeatCount="indefinite"
               />
             </feTurbulence>
-            <feDisplacementMap in="SourceGraphic" scale="30" />
+            <feDisplacementMap in="SourceGraphic" scale="40" />
           </filter>
         </defs>
         <rect
           width="100%"
           height="100%"
-          fill="rgba(20, 15, 35, 0.3)"
+          fill="rgba(30, 20, 50, 0.4)"
           filter="url(#turbulence)"
         />
       </svg>
@@ -219,48 +224,48 @@ export function VoidBackground({ opacity }: VoidBackgroundProps) {
       <style>{`
         @keyframes breathe {
           0%, 100% {
-            opacity: 0.6;
+            opacity: 0.5;
             transform: scale(1);
           }
           50% {
             opacity: 1;
-            transform: scale(1.05);
+            transform: scale(1.08);
           }
         }
 
         @keyframes fogDrift0 {
           0%, 100% {
-            transform: translate(0%, 0%) scale(1);
+            transform: translate(0%, 0%) scale(1) rotate(0deg);
           }
           25% {
-            transform: translate(5%, 3%) scale(1.05);
+            transform: translate(8%, 5%) scale(1.1) rotate(2deg);
           }
           50% {
-            transform: translate(-3%, 5%) scale(1.02);
+            transform: translate(-5%, 8%) scale(1.05) rotate(-1deg);
           }
           75% {
-            transform: translate(-5%, -2%) scale(1.08);
+            transform: translate(-8%, -3%) scale(1.15) rotate(1deg);
           }
         }
 
         @keyframes fogDrift1 {
           0%, 100% {
-            transform: translate(0%, 0%) scale(1.02);
+            transform: translate(0%, 0%) scale(1.05) rotate(0deg);
           }
           33% {
-            transform: translate(-6%, 4%) scale(1);
+            transform: translate(-10%, 6%) scale(1) rotate(-2deg);
           }
           66% {
-            transform: translate(4%, -3%) scale(1.06);
+            transform: translate(6%, -5%) scale(1.12) rotate(1deg);
           }
         }
 
         @keyframes fogDrift2 {
           0%, 100% {
-            transform: translate(0%, 0%) scale(1.05);
+            transform: translate(0%, 0%) scale(1.1) rotate(0deg);
           }
           50% {
-            transform: translate(3%, -4%) scale(1);
+            transform: translate(5%, -6%) scale(1) rotate(-1deg);
           }
         }
       `}</style>
