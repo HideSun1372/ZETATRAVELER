@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import { Howl } from "howler";
-import { VoidBackground } from "./VoidBackground";
 
 interface VesselCreatorProps {
   onComplete: (name: string) => void;
@@ -299,7 +298,15 @@ export function VesselCreator({ onComplete }: VesselCreatorProps) {
 
   return (
     <div className="w-full h-full bg-black select-none relative overflow-hidden">
-      <VoidBackground opacity={bgOpacity} />
+      <img
+        src="/textures/vessel_bg.jpg"
+        alt=""
+        className="absolute inset-0 w-full h-full object-cover"
+        style={{
+          opacity: bgOpacity,
+          transition: "opacity 0.5s ease-out",
+        }}
+      />
       <div 
         className="absolute left-1/2 text-center max-w-xl px-4 z-10"
         style={{ top: "35%", transform: "translateX(-50%)" }}
