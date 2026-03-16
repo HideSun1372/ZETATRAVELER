@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useRPG } from "@/lib/stores/useRPG";
+import { parseSaveData } from "@/lib/saveSchema";
 import { Howl } from "howler";
 
 interface SaveSlot {
@@ -26,6 +27,8 @@ export function MainMenu() {
   const [selectedSlot, setSelectedSlot] = useState(0);
   const [saveSlots, setSaveSlots] = useState<SaveSlot[]>([]);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
   const musicRef = useRef<Howl | null>(null);
 
   // Play menu music
@@ -72,13 +75,16 @@ export function MainMenu() {
   }, [menuState]);
 
   const handleNewGame = () => {
-    // Skip vessel creation temporarily - go straight to intro
-    setVesselName("Aiden");
-    setGamePhase("intro");
+    setGamePhase("vessel");
   };
 
   const handleContinue = (slot: number) => {
-    loadGame(slot);
+    const result = loadGame(slot);
+    if (!result.ok) {
+      setLoadError(result.error);
+      return;
+    }
+    setLoadError(null);
     setGamePhase("hub");
   };
 
@@ -105,6 +111,7 @@ export function MainMenu() {
   };
 
   const handleImportSave = (slot: number) => {
+    setImportError(null);
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.json';
@@ -113,16 +120,16 @@ export function MainMenu() {
       if (file) {
         const reader = new FileReader();
         reader.onload = (ev) => {
-          try {
-            const data = ev.target?.result as string;
-            JSON.parse(data);
-            localStorage.setItem(`zetatraveler_save_${slot}`, data);
-            localStorage.setItem(`zetatraveler_save_${slot}_timestamp`, new Date().toISOString());
-            setMenuState("main");
-            setTimeout(() => setMenuState("continue"), 100);
-          } catch (err) {
-            console.error("Invalid save file");
+          const data = ev.target?.result as string;
+          const result = parseSaveData(data);
+          if (!result.ok) {
+            setImportError(result.error);
+            return;
           }
+          localStorage.setItem(`zetatraveler_save_${slot}`, data);
+          localStorage.setItem(`zetatraveler_save_${slot}_timestamp`, new Date().toISOString());
+          setMenuState("main");
+          setTimeout(() => setMenuState("continue"), 100);
         };
         reader.readAsText(file);
       }
@@ -200,6 +207,22 @@ export function MainMenu() {
           >
             SELECT SAVE FILE
           </h2>
+
+          {(loadError || importError) && (
+            <div 
+              className="p-3 border-2 border-red-500 bg-red-900/30 text-red-300 text-sm text-left"
+              style={{ fontFamily: "'Courier New', monospace" }}
+            >
+              <p className="font-medium mb-1">{loadError ? "Could not load save:" : "Could not import save:"}</p>
+              <p>{loadError ?? importError}</p>
+              <button
+                onClick={() => { setLoadError(null); setImportError(null); }}
+                className="mt-2 px-2 py-1 text-xs border border-red-400 hover:bg-red-400 hover:text-black"
+              >
+                DISMISS
+              </button>
+            </div>
+          )}
 
           {saveSlots.map((slot, index) => (
             <div key={slot.slot} className="relative">

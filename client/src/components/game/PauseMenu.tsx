@@ -34,7 +34,6 @@ export function PauseMenu({ onClose, onReturnToHub, showReturnToHub = false }: P
 
   const handleSave = (slot: number) => {
     saveGame(slot);
-    localStorage.setItem(`zetatraveler_save_${slot}_timestamp`, new Date().toISOString());
     setSaveMessage(`Saved to Slot ${slot}!`);
     setTimeout(() => setSaveMessage(null), 2000);
   };

@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { PLANET_DATA } from "../data/planets";
+import { parseSaveData, type LoadResult } from "../saveSchema";
 
 export type GamePhase = "vessel" | "intro" | "menu" | "hub" | "planet" | "battle" | "gameover";
 export type Route = "pacifist" | "neutral" | "genocide";
@@ -138,7 +139,7 @@ interface RPGState {
   advanceLakineDialogue: () => void;
   
   saveGame: (slot: number) => void;
-  loadGame: (slot: number) => void;
+  loadGame: (slot: number) => LoadResult;
   
   travelToPlanet: (planetId: number) => void;
   returnToHub: () => void;
@@ -576,6 +577,7 @@ export const useRPG = create<RPGState>((set, get) => ({
     
     const timestamp = new Date().toISOString();
     localStorage.setItem(`zetatraveler_save_${slot}`, saveData);
+    localStorage.setItem(`zetatraveler_save_${slot}_timestamp`, timestamp);
     
     set({
       saveSlots: state.saveSlots.map((s) =>
@@ -586,13 +588,18 @@ export const useRPG = create<RPGState>((set, get) => ({
   
   loadGame: (slot) => {
     const saveData = localStorage.getItem(`zetatraveler_save_${slot}`);
-    if (saveData) {
-      const data = JSON.parse(saveData);
-      set({
-        ...data,
-        gamePhase: "hub",
-      });
+    if (!saveData) {
+      return { ok: false, error: "No save data in this slot." };
     }
+    const result = parseSaveData(saveData);
+    if (!result.ok) {
+      return result;
+    }
+    set({
+      ...result.data,
+      gamePhase: "hub",
+    });
+    return { ok: true, data: result.data };
   },
   
   travelToPlanet: (planetId) => {

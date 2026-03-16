@@ -9,8 +9,6 @@ import { Battle } from "./components/game/Battle";
 import { GameOver } from "./components/game/GameOver";
 import "@fontsource/inter";
 
-const SKIP_VESSEL_CREATION = false;
-
 function App() {
   const gamePhase = useRPG((state) => state.gamePhase);
   const setGamePhase = useRPG((state) => state.setGamePhase);
@@ -21,31 +19,22 @@ function App() {
   // Check for save files on startup and decide initial phase
   useEffect(() => {
     if (initialized) return;
-    
-    // Check if any save files exist
-    const hasSaveFiles = 
-      localStorage.getItem('zetatraveler_save_1') ||
-      localStorage.getItem('zetatraveler_save_2') ||
-      localStorage.getItem('zetatraveler_save_3');
-    
+
+    const hasSaveFiles =
+      localStorage.getItem("zetatraveler_save_1") ||
+      localStorage.getItem("zetatraveler_save_2") ||
+      localStorage.getItem("zetatraveler_save_3");
+
     if (hasSaveFiles) {
-      // Save files exist - show menu
       setGamePhase("menu");
     } else {
-      // No save files - start new game directly
-      if (SKIP_VESSEL_CREATION) {
-        setVesselName("Aiden");
-        setGamePhase("intro");
-      } else {
-        setGamePhase("vessel");
-      }
+      setGamePhase("vessel");
     }
     setInitialized(true);
-  }, [initialized, setGamePhase, setVesselName]);
+  }, [initialized, setGamePhase]);
 
   const handleVesselComplete = (_name: string) => {
-    // The vessel creation is a fake-out - the player's real name is always Aiden
-    setVesselName("Aiden");
+    setVesselName(_name);
     setGamePhase("intro");
   };
 
@@ -55,7 +44,7 @@ function App() {
 
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative', overflow: 'hidden' }}>
-      {gamePhase === "vessel" && !SKIP_VESSEL_CREATION && (
+      {gamePhase === "vessel" && (
         <VesselCreator onComplete={handleVesselComplete} />
       )}
 

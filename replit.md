@@ -16,7 +16,7 @@ Preferred communication style: Simple, everyday language.
 - Built using Vite as the build tool and development server
 - React Three Fiber (@react-three/fiber) and React Three Drei for 3D rendering in battle scenes
 - React Three Postprocessing for visual effects
-- TanStack Query for state management and data fetching
+- TanStack Query configured for future API data fetching (currently unused; game state is Zustand-only)
 - Zustand for global client-side state management
 
 **UI Components**:
@@ -28,7 +28,7 @@ Preferred communication style: Simple, everyday language.
 **State Management**:
 - Game state managed through Zustand stores (`useRPG`, `useGame`, `useAudio`)
 - Separates concerns between game phases, player data, combat state, and audio
-- LocalStorage integration for save/load functionality
+- LocalStorage integration for save/load with Zod validation and React Error Boundary for resilience
 
 **Game Phases**:
 - `vessel`: Character/vessel creation sequence
@@ -137,7 +137,7 @@ Preferred communication style: Simple, everyday language.
 - Steam integration planned for authentication and cloud saves (not yet implemented)
 
 **Key NPM Packages**:
-- React ecosystem: react, react-dom, react-router-dom
+- React ecosystem: react, react-dom
 - 3D rendering: @react-three/fiber, @react-three/drei, @react-three/postprocessing, three
 - UI framework: @radix-ui/* components, tailwindcss
 - State management: zustand, @tanstack/react-query
