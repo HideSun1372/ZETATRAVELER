@@ -7,6 +7,7 @@ import { Hub } from "./components/game/Hub";
 import { Planet } from "./components/game/Planet";
 import { Battle } from "./components/game/Battle";
 import { GameOver } from "./components/game/GameOver";
+import { Analytics } from "@vercel/analytics/react"
 import "@fontsource/inter";
 
 function App() {
