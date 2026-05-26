@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { Howl } from "howler";
 
 interface IntroCutsceneProps {
   playerName: string;
@@ -21,7 +20,6 @@ export function IntroCutscene({ playerName, onComplete }: IntroCutsceneProps) {
   const [whiteOverlay, setWhiteOverlay] = useState(1);
   const [blackOverlay, setBlackOverlay] = useState(0);
   const [showScene, setShowScene] = useState(false);
-  const musicRef = useRef<Howl | null>(null);
   const cHeldRef = useRef(false);
   const cIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -40,28 +38,6 @@ export function IntroCutscene({ playerName, onComplete }: IntroCutsceneProps) {
   ], []);
 
   const currentStep = steps[stepIndex];
-
-  useEffect(() => {
-    if (!musicRef.current) {
-      musicRef.current = new Howl({
-        src: ["/sounds/background.mp3"],
-        loop: true,
-        volume: 0,
-      });
-      musicRef.current.play();
-      musicRef.current.fade(0, 0.3, 2000);
-    }
-
-    return () => {
-      if (musicRef.current) {
-        musicRef.current.fade(musicRef.current.volume(), 0, 1000);
-        setTimeout(() => {
-          musicRef.current?.stop();
-          musicRef.current?.unload();
-        }, 1000);
-      }
-    };
-  }, []);
 
   useEffect(() => {
     if (!currentStep) return;
