@@ -1,11 +1,20 @@
 import { type Server } from "node:http";
 
+import cors from "cors";
 import express, {
   type Express,
   type Request,
   Response,
   NextFunction,
 } from "express";
+
+const allowedOrigins = [
+  "https://zetatraveler.vercel.app",
+  "http://localhost:5173",
+  "http://localhost:5000",
+  "http://127.0.0.1:5000",
+  "http://127.0.0.1:5173",
+];
 
 import { registerRoutes } from "./routes";
 
@@ -21,6 +30,27 @@ export function log(message: string, source = "express") {
 }
 
 export const app = express();
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    const isLocal =
+      origin.includes("localhost") ||
+      origin.includes("127.0.0.1") ||
+      origin.startsWith("http://192.168.") ||
+      origin.startsWith("http://10.");
+    if (isLocal || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("CORS blocked this origin"));
+    }
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  exposedHeaders: ["set-cookie"],
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
