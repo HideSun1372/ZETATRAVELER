@@ -34,8 +34,8 @@ export function ColdStartScreen() {
           Establishing connection...
         </p>
         <p style={{ fontSize: "0.8rem", color: "#6a82b0", margin: 0, lineHeight: 1.6 }}>
-          The server is on a free plan and sleeps after inactivity.
-          This usually takes about 30 seconds.
+          Connection usually gets interrupted by inactivity.
+          Reestablishing takes roughly 30 seconds.
         </p>
 
         <div style={{ width: "100%", marginTop: "0.5rem" }}>
@@ -55,7 +55,7 @@ export function ColdStartScreen() {
 
         {showConnectivityError && (
           <p style={{ fontSize: "0.7rem", color: "#4a5a80", margin: 0 }}>
-            Taking longer than expected. Are you connected to the internet?
+            It seems establishing a connection is not achievable. Are you connected to the internet?
           </p>
         )}
       </div>
