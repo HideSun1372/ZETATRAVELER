@@ -7,6 +7,7 @@ import { Hub } from "./components/game/Hub";
 import { Planet } from "./components/game/Planet";
 import { Battle } from "./components/game/Battle";
 import { GameOver } from "./components/game/GameOver";
+import { ColdStartScreen } from "./components/game/ColdStartScreen";
 import { Analytics } from "@vercel/analytics/react"
 import "@fontsource/inter";
 
@@ -16,6 +17,16 @@ function App() {
   const setVesselName = useRPG((state) => state.setVesselName);
   const vesselName = useRPG((state) => state.vesselName);
   const [initialized, setInitialized] = useState(false);
+  const [backendReady, setBackendReady] = useState(false);
+
+  useEffect(() => {
+    const poll = () => {
+      fetch("/api/health")
+        .then(res => { if (res.ok) setBackendReady(true); else setTimeout(poll, 2000); })
+        .catch(() => setTimeout(poll, 2000));
+    };
+    poll();
+  }, []);
 
   // Check for save files on startup and decide initial phase
   useEffect(() => {
@@ -42,6 +53,8 @@ function App() {
   const handleIntroComplete = () => {
     setGamePhase("hub");
   };
+
+  if (!backendReady) return <ColdStartScreen />;
 
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative', overflow: 'hidden' }}>
