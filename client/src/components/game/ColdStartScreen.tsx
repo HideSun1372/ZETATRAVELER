@@ -49,7 +49,7 @@ export function ColdStartScreen() {
                 transition: "width 0.5s ease-out",
               }}
             />
-          </div>
+          </div>    
           <p style={{ fontSize: "0.7rem", color: "#4a5a80", marginTop: "0.4rem" }}>{elapsedSec}s</p>
         </div>
 
